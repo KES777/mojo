@@ -288,6 +288,7 @@ endpoints of these nested routes can.
 
   # /foo     -> undef
   # /foo/bar -> {controller => 'foo', action => 'bar'}
+  # /foo/foo -> undef
   my $foo = $r->any('/foo')->to(controller => 'foo');
   $foo->get('/bar')->to(action => 'bar');
 
@@ -297,12 +298,10 @@ ones.
   # /cats      -> {controller => 'cats', action => 'index'}
   # /cats/nyan -> {controller => 'cats', action => 'nyan'}
   # /cats/lol  -> {controller => 'cats', action => 'default'}
-  # /cats/woof -> 404
   my $cats = $r->any('/cats')->to(controller => 'cats', action => 'default');
   $cats->get('/')->to(action => 'index');
   $cats->get('/nyan')->to(action => 'nyan');
   $cats->get('/lol');
-  # $cats->get( '/woof' ); # We have not define this route
 
 =head2 Special stash values
 
