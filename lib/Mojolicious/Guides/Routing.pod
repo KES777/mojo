@@ -295,13 +295,13 @@ endpoints of these nested routes can.
 The stash is simply inherited from route to route and newer values override old
 ones.
 
-  # /cats      -> {controller => 'cats', action => 'index'}
-  # /cats/nyan -> {controller => 'cats', action => 'nyan'}
-  # /cats/lol  -> {controller => 'cats', action => 'default'}
-  my $cats = $r->any('/cats')->to(controller => 'cats', action => 'default');
+  # /cats      -> {controller => 'cats', action => 'index',   foo => 'hi' }
+  # /cats/nyan -> {controller => 'cats', action => 'nyan',    foo => 'hi' }
+  # /cats/lol  -> {controller => 'cats', action => 'default', foo => 'bye' }
+  my $cats = $r->any('/cats')->to(controller => 'cats', action => 'default', foo => 'hi');
   $cats->get('/')->to(action => 'index');
   $cats->get('/nyan')->to(action => 'nyan');
-  $cats->get('/lol');
+  $cats->get('/lol', foo => 'bye');
 
 =head2 Special stash values
 
