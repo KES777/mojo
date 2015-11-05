@@ -288,7 +288,6 @@ endpoints of these nested routes can.
 
   # /foo     -> undef
   # /foo/bar -> {controller => 'foo', action => 'bar'}
-  # /foo/foo -> undef
   my $foo = $r->any('/foo')->to(controller => 'foo');
   $foo->get('/bar')->to(action => 'bar');
 
