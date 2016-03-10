@@ -68,18 +68,16 @@ sub _input {
   # Special selection value
   my @values = @{$c->every_param($name)};
   my $type = $attrs{type} || '';
-  if (@values && $type ne 'submit') {
 
-    # Checkbox or radiobutton
-    if ($type eq 'checkbox' || $type eq 'radio') {
-      delete $attrs{checked} if @values;
-      my $value = $attrs{value} // 'on';
-      $attrs{checked} = undef if grep { $_ eq $value } @values;
-    }
-
-    # Others
-    else { $attrs{value} = $values[-1] }
+  # Checkbox or radiobutton
+  if ($type eq 'checkbox' || $type eq 'radio') {
+    delete $attrs{checked} if @values;
+    my $value = $attrs{value} // 'on';
+    $attrs{checked} = undef if grep { $_ eq $value } @values;
   }
+
+  # Others
+  else { $attrs{value} = $values[-1] if @values }
 
   return _validation($c, $name, 'input', name => $name, %attrs);
 }
