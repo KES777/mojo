@@ -38,7 +38,7 @@ sub register {
 
   $app->helper("reply.$_" => $self->can("_$_")) for qw(asset static);
 
-  $app->helper('reply.exception' => sub { _development('exception', @_) });
+  $app->helper('reply.exception' => sub { eval{}; _development('exception', @_) });
   $app->helper('reply.not_found' => sub { _development('not_found', @_) });
 
   $app->helper(ua => sub { shift->app->ua });
