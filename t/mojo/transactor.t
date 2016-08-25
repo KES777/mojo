@@ -570,9 +570,8 @@ is $tx->req->headers->proxy_authorization, 'Basic c3JpOnNlY3IzdA==',
   'right "Proxy-Authorization" header';
 $tx = $t->proxy_connect($tx);
 is $tx->req->method, 'CONNECT', 'right method';
-is $tx->req->url->to_abs, 'https://mojolicious.org', 'right URL';
-is $tx->req->proxy->to_abs, 'http://sri:secr3t@127.0.0.1:3000',
-  'right proxy URL';
+is $tx->req->url->to_abs,   'https://mojolicious.org', 'right URL';
+is $tx->req->proxy->to_abs, 'http://127.0.0.1:3000',   'right proxy URL';
 ok !$tx->req->headers->authorization,       'no "Authorization" header';
 ok !$tx->req->headers->proxy_authorization, 'no "Proxy-Authorization" header';
 ok !$tx->req->headers->host,                'no "Host" header';
@@ -927,6 +926,12 @@ is $tx->req->headers->location, undef,              'no "Location" value';
 is $tx->req->body, '',    'no content';
 is $tx->res->code, undef, 'no status';
 is $tx->res->headers->location, undef, 'no "Location" value';
+
+# 302 redirect for CONNECT request
+$tx = $t->tx(CONNECT => 'http://mojolicious.org');
+$tx->res->code(302);
+$tx->res->headers->location('http://example.com/bar');
+is $t->redirect($tx), undef, 'unsupported redirect';
 
 # Abstract methods
 eval { Mojo::Transaction->client_read };

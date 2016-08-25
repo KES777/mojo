@@ -3,7 +3,7 @@
 
 =head1 NAME
 
-Mojolicious::Guides::Cookbook - Cookbook
+Mojolicious::Guides::Cookbook - Cooking with Mojolicious
 
 =head1 OVERVIEW
 
@@ -42,9 +42,25 @@ L<Mojo::Server::Daemon/"listen">.
   $ ./script/my_app daemon -l https://[::]:3000
   Server available at https://[::]:3000
 
-On UNIX platforms you can also add preforking and switch to a multi-process
-architecture with L<Mojolicious::Command::prefork>, to take advantage of
-multiple CPU cores and copy-on-write memory management.
+To manage the web server with systemd, you can use a unit configuration file
+like this.
+
+  [Unit]
+  Description=My Mojolicious application
+  After=network.target
+
+  [Service]
+  Type=simple
+  ExecStart=/home/sri/myapp/script/my_app daemon -m production -l http://*:8080
+
+  [Install]
+  WantedBy=multi-user.target
+
+=head2 Pre-forking
+
+On UNIX platforms you can also add pre-forking to the built-in web server and
+switch to a multi-process architecture with L<Mojolicious::Command::prefork>, to
+take advantage of multiple CPU cores and copy-on-write memory management.
 
   $ ./script/my_app prefork
   Server available at http://127.0.0.1:3000
@@ -72,6 +88,21 @@ whenever a new worker process has been forked and its event loop gets started.
 
   app->start;
 
+And to manage the pre-forking web server with systemd, you can use a unit
+configuration file like this.
+
+  [Unit]
+  Description=My Mojolicious application
+  After=network.target
+
+  [Service]
+  Type=simple
+  ExecStart=/home/sri/myapp/script/my_app prefork -m production -l http://*:8080
+  KillMode=process
+
+  [Install]
+  WantedBy=multi-user.target
+
 =head2 Morbo
 
 After reading the L<Mojolicious::Guides::Tutorial>, you should already be
@@ -90,7 +121,7 @@ script.
 
 =head2 Hypnotoad
 
-For bigger applications L<Mojolicious> contains the UNIX optimized preforking
+For bigger applications L<Mojolicious> contains the UNIX optimized pre-forking
 web server L<Mojo::Server::Hypnotoad>, which can take advantage of multiple CPU
 cores and copy-on-write memory management to scale up to thousands of
 concurrent client connections.
@@ -101,7 +132,7 @@ concurrent client connections.
   |- Mojo::Server::Daemon [3]
   +- Mojo::Server::Daemon [4]
 
-It is based on the L<Mojo::Server::Prefork> web server, which adds preforking
+It is based on the L<Mojo::Server::Prefork> web server, which adds pre-forking
 to L<Mojo::Server::Daemon>, but optimized specifically for production
 environments out of the box. To start applications with it you can use the
 L<hypnotoad> script, which listens on port C<8080>, automatically daemonizes
@@ -147,6 +178,23 @@ C<X-Forwarded-For> and C<X-Forwarded-Proto> headers.
 
   # myapp.conf
   {hypnotoad => {proxy => 1}};
+
+To manage Hypnotoad with systemd, you can use a unit configuration file like
+this.
+
+  [Unit]
+  Description=My Mojolicious application
+  After=network.target
+
+  [Service]
+  Type=forking
+  PIDFile=/home/sri/myapp/script/hypnotoad.pid
+  ExecStart=/path/to/hypnotoad /home/sri/myapp/script/my_app
+  ExecReload=/path/to/hypnotoad /home/sri/myapp/script/my_app
+  KillMode=process
+
+  [Install]
+  WantedBy=multi-user.target
 
 =head2 Zero downtime software upgrades
 
@@ -217,7 +265,8 @@ C<CGI> is supported out of the box and your L<Mojolicious> application will
 automatically detect that it is executed as a C<CGI> script. Its use in
 production environments is discouraged though, because as a result of how
 C<CGI> works, it is very slow and many web servers are making it exceptionally
-hard to configure properly.
+hard to configure properly. Additionally, many real-time web features, such as
+WebSockets, are not available.
 
   ScriptAlias / /home/sri/my_app/script/my_app/
 
@@ -227,7 +276,8 @@ L<PSGI> is an interface between Perl web frameworks and web servers, and
 L<Plack> is a Perl module and toolkit that contains L<PSGI> middleware, helpers
 and adapters to web servers. L<PSGI> and L<Plack> are inspired by Python's WSGI
 and Ruby's Rack. L<Mojolicious> applications are ridiculously simple to deploy
-with L<Plack>.
+with L<Plack>, but be aware that many real-time web features, such as
+WebSockets, are not available.
 
   $ plackup ./script/my_app
 
@@ -760,7 +810,7 @@ can be combined to solve some of hardest problems in web development.
   hook after_build_tx => sub {
     my $tx = shift;
 
-    # Subscribe to "upgrade" event to indentify multipart uploads
+    # Subscribe to "upgrade" event to identify multipart uploads
     weaken $tx;
     $tx->req->content->on(upgrade => sub {
       my ($single, $multi) = @_;
@@ -810,7 +860,7 @@ can be combined to solve some of hardest problems in web development.
 
 =head2 Event loops
 
-Internally the L<Mojo::IOLoop> event loop can use multiple reactor backends,
+Internally, the L<Mojo::IOLoop> event loop can use multiple reactor backends,
 L<EV> for example, will be automatically used if possible. Which in turn allows
 other event loops like L<AnyEvent> to just work.
 
@@ -906,7 +956,7 @@ For a full list of available CSS selectors see L<Mojo::DOM::CSS/"SELECTORS">.
 
 Most web services these days are based on the JSON data-interchange format.
 That's why L<Mojolicious> comes with the possibly fastest pure-Perl
-implementation L<Mojo::JSON> built right in, it is accessible through
+implementation L<Mojo::JSON> built right in, which is accessible through
 L<Mojo::Message/"json">.
 
   use Mojo::UserAgent;
@@ -1346,7 +1396,8 @@ L<Mojolicious::Plugins/"PLUGINS"> for a few ideas.
 
 By now you've probably used many of the built-in commands described in
 L<Mojolicious::Commands>, but did you know that you can just add new ones and
-that they will be picked up automatically by the command line interface?
+that they will be picked up automatically by the command line interface if they
+are placed in a directory from C<@INC>?
 
   package Mojolicious::Command::spy;
   use Mojo::Base 'Mojolicious::Command';
@@ -1358,10 +1409,10 @@ that they will be picked up automatically by the command line interface?
     my ($self, @args) = @_;
 
     # Leak secret passphrases
-    say for @{$self->app->secrets} if $args[0] eq 'secrets';
+    if ($args[0] eq 'secrets') { say for @{$self->app->secrets} }
 
     # Leak mode
-    say $self->app->mode if $args[0] eq 'mode';
+    elsif ($args[0] eq 'mode') { say $self->app->mode }
   }
 
   1;
@@ -1372,7 +1423,7 @@ attributes and methods in L<Mojolicious::Command> that you can use or overload.
   $ mojo spy secrets
   HelloWorld
 
-  $ ./myapp.pl spy secrets
+  $ ./script/myapp spy secrets
   secr3t
 
 And to make your commands application specific, just add a custom namespace to
@@ -1395,7 +1446,7 @@ C<MyApp::Command::spy> instead of C<Mojolicious::Command::spy>.
 The options C<-h>/C<--help>, C<--home> and C<-m>/C<--mode> are handled
 automatically by L<Mojolicious::Commands> and are shared by all commands.
 
-  $ ./myapp.pl spy -m production mode
+  $ ./script/myapp spy -m production mode
   production
 
 For a full list of shared options see L<Mojolicious::Commands/"SYNOPSIS">.
@@ -1471,9 +1522,9 @@ to the proper shebang during installation.
 
   use FindBin;
   BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
+  use Mojolicious::Commands;
 
   # Start command line interface for application
-  require Mojolicious::Commands;
   Mojolicious::Commands->start_app('MyApp');
 
 That's really everything, now you can package your application like any other
@@ -1525,7 +1576,8 @@ more documentation and examples by many different authors.
 
 If you have any questions the documentation might not yet answer, don't
 hesitate to ask on the
-L<mailing-list|http://groups.google.com/group/mojolicious> or the official IRC
-channel C<#mojo> on C<irc.perl.org>.
+L<mailing list|http://groups.google.com/group/mojolicious> or the official IRC
+channel C<#mojo> on C<irc.perl.org>
+(L<chat now!|https://chat.mibbit.com/?channel=%23mojo&server=irc.perl.org>).
 
 =cut

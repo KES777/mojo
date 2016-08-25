@@ -548,7 +548,7 @@ establish the WebSocket connection.
   # Do something after the transaction has been finished
   $c->on(finish => sub {
     my $c = shift;
-    $c->app->log->debug('We are done');
+    $c->app->log->debug('All data has been sent');
   });
 
   # Receive WebSocket message
@@ -610,16 +610,21 @@ For more control you can also access request information directly.
   $c = $c->redirect_to('/index.html');
   $c = $c->redirect_to('http://example.com/index.html');
 
-Prepare a C<302> redirect response, takes the same arguments as L</"url_for">.
+Prepare a C<302> (if the status code is not already C<3xx>) redirect response
+with C<Location> header, takes the same arguments as L</"url_for">.
 
-  # Moved permanently
+  # Moved Permanently
   $c->res->code(301);
+  $c->redirect_to('some_route');
+
+  # Temporary Redirect
+  $c->res->code(307);
   $c->redirect_to('some_route');
 
 =head2 render
 
   my $bool = $c->render;
-  my $bool = $c->render(controller => 'foo', action => 'bar');
+  my $bool = $c->render(foo => 'bar', baz => 23);
   my $bool = $c->render(template => 'foo/index');
   my $bool = $c->render(template => 'index', format => 'html');
   my $bool = $c->render(data => $bytes);
@@ -678,7 +683,7 @@ automatic rendering would result in a response.
 =head2 render_maybe
 
   my $bool = $c->render_maybe;
-  my $bool = $c->render_maybe(controller => 'foo', action => 'bar');
+  my $bool = $c->render_maybe(foo => 'bar', baz => 23);
   my $bool = $c->render_maybe('foo/index', format => 'html');
 
 Try to render content, but do not call

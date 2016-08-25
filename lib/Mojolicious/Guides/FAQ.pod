@@ -62,11 +62,17 @@ installation times without giving us anything in return. It would only make
 sense if we wanted to pass ownership of a module to a new maintainer, which we
 already have done in the past.
 
+=head2 Where can i discuss my patches for Mojolicious?
+
+We'd love to discuss your contributions to L<Mojolicious> on our official IRC
+channel C<#mojo> on C<irc.perl.org>
+(L<chat now!|https://chat.mibbit.com/?channel=%23mojo&server=irc.perl.org>).
+
 =head2 Which versions of Perl are supported by Mojolicious?
 
 First of all, you need to be aware that according to the L<perlpolicy>, only
 the two most recent stable release series of Perl are supported by the
-community and receive bug fixes, which are currently 5.22.x and 5.20.x.
+community and receive bug fixes, which are currently 5.24.x and 5.22.x.
 L<Mojolicious> follows this model and fully supports these two release series.
 In addition we will also keep the distribution installable up to a certain
 legacy version that we deem worthy of supporting, but not specifically optimize
@@ -203,22 +209,14 @@ around 256KB by default, you can use the attribute
 L<Mojo::Content/"max_buffer_size"> or C<MOJO_MAX_BUFFER_SIZE> environment
 variable to change this value.
 
-=head2 What does the error "EV does not work with ithreads" mean?
-
-The L<Mojolicious> user agent and web servers are based on an event loop that
-supports multiple reactor backends. One of these backends is L<EV>, it is very
-fast and will be automatically used if possible. On Windows however, the
-C<ithreads>-based C<fork()> emulation can interfere with it, and you may have to
-use the C<MOJO_REACTOR> environment variable to enforce a more portable one.
-
-  MOJO_REACTOR=Mojo::Reactor::Poll
-
 =head2 What does "Your secret passphrase needs to be changed" mean?
 
 L<Mojolicious> uses secret passphrases for security features such as signed
 cookies. It defaults to using L<Mojolicious/"moniker">, which is not very
 secure, so we added this log message as a reminder. You can change the
-passphrase with the attribute L<Mojolicious/"secrets">.
+passphrase with the attribute L<Mojolicious/"secrets">. Since some plugins also
+depend on it, you should try changing it as early as possible in your
+application.
 
   $app->secrets(['My very secret passphrase.']);
 
@@ -254,7 +252,7 @@ be closed immediately.
 =head2 What does "Worker 31842 has no heartbeat, restarting" mean?
 
 As long as they are accepting new connections, worker processes of all built-in
-preforking web servers send heartbeat messages to the manager process at
+pre-forking web servers send heartbeat messages to the manager process at
 regular intervals, to signal that they are still responsive. A blocking
 operation such as an infinite loop in your application can prevent this, and
 will force the affected worker to be restarted after a timeout. This timeout
@@ -271,7 +269,8 @@ more documentation and examples by many different authors.
 
 If you have any questions the documentation might not yet answer, don't
 hesitate to ask on the
-L<mailing-list|http://groups.google.com/group/mojolicious> or the official IRC
-channel C<#mojo> on C<irc.perl.org>.
+L<mailing list|http://groups.google.com/group/mojolicious> or the official IRC
+channel C<#mojo> on C<irc.perl.org>
+(L<chat now!|https://chat.mibbit.com/?channel=%23mojo&server=irc.perl.org>).
 
 =cut
