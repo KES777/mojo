@@ -51,4 +51,10 @@ $t->get_ok('/.../mojolicious/secret.txt')->status_is(404)
   ->header_is(Server => 'Mojolicious (Perl)')
   ->content_like(qr/Testing not found/);
 
+# Foo::bar in staging mode (missing not_found template)
+$t->app->mode( 'staging' );
+$t->get_ok('/foo/baz')->status_is(404)
+  ->header_is(Server => 'Mojolicious (Perl)')
+  ->content_like(qr/Page not found \(staging mode\)/);
+
 done_testing();
