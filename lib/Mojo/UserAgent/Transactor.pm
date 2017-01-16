@@ -1,11 +1,11 @@
 package Mojo::UserAgent::Transactor;
 use Mojo::Base -base;
 
-use File::Basename 'basename';
 use Mojo::Asset::File;
 use Mojo::Asset::Memory;
 use Mojo::Content::MultiPart;
 use Mojo::Content::Single;
+use Mojo::File 'path';
 use Mojo::JSON 'encode_json';
 use Mojo::Parameters;
 use Mojo::Transaction::HTTP;
@@ -76,7 +76,8 @@ sub redirect {
   return undef if uc $req->method eq 'CONNECT';
 
   # Fix location without authority and/or scheme
-  return undef unless my $location = $res->headers->location;
+  return undef
+    unless my $location = $res->headers->every_header('Location')->[0];
   $location = Mojo::URL->new($location);
   $location = $location->base($req->url)->to_abs unless $location->is_abs;
   my $proto = $location->protocol;
@@ -89,8 +90,8 @@ sub redirect {
     $new->req($clone);
   }
   else {
-    my $method = uc $req->method;
-    my $headers = $new->req->method($method eq 'POST' ? 'GET' : $method)
+    my $m = uc $req->method;
+    my $headers = $new->req->method($code == 303 || $m eq 'POST' ? 'GET' : $m)
       ->content->headers($req->headers->clone)->headers;
     $headers->remove($_) for grep {/^content-/i} @{$headers->names};
   }
@@ -207,7 +208,7 @@ sub _multipart {
         if (my $file = delete $value->{file}) {
           $file = Mojo::Asset::File->new(path => $file) unless ref $file;
           $part->asset($file);
-          $value->{filename} //= basename $file->path
+          $value->{filename} //= path($file->path)->basename
             if $file->isa('Mojo::Asset::File');
         }
 
@@ -365,10 +366,11 @@ C<307> or C<308> redirect response if possible.
   my $tx = $t->tx(GET  => 'example.com');
   my $tx = $t->tx(POST => 'http://example.com');
   my $tx = $t->tx(GET  => 'http://example.com' => {Accept => '*/*'});
-  my $tx = $t->tx(PUT  => 'http://example.com' => 'Hi!');
+  my $tx = $t->tx(PUT  => 'http://example.com' => 'Content!');
   my $tx = $t->tx(PUT  => 'http://example.com' => form => {a => 'b'});
   my $tx = $t->tx(PUT  => 'http://example.com' => json => {a => 'b'});
-  my $tx = $t->tx(POST => 'http://example.com' => {Accept => '*/*'} => 'Hi!');
+  my $tx = $t->tx(
+    POST => 'http://example.com' => {Accept => '*/*'} => 'Content!');
   my $tx = $t->tx(
     PUT => 'http://example.com' => {Accept => '*/*'} => form => {a => 'b'});
   my $tx = $t->tx(

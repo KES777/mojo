@@ -4,11 +4,9 @@ use Mojo::Base -base;
 # "Bender: I was God once.
 #  God: Yes, I saw. You were doing well, until everyone died."
 use Config;
-use Cwd 'abs_path';
-use File::Basename 'dirname';
-use File::Spec::Functions 'catfile';
+use Mojo::File 'path';
 use Mojo::Server::Prefork;
-use Mojo::Util qw(steady_time);
+use Mojo::Util 'steady_time';
 use Scalar::Util 'weaken';
 
 has prefork => sub { Mojo::Server::Prefork->new(listen => ['http://*:8080']) };
@@ -39,7 +37,7 @@ sub run {
 
   # Remember executable and application for later
   $ENV{HYPNOTOAD_EXE} ||= $0;
-  $0 = $ENV{HYPNOTOAD_APP} ||= abs_path $app;
+  $0 = $ENV{HYPNOTOAD_APP} ||= path($app)->to_abs->to_string;
 
   # This is a production server
   $ENV{MOJO_MODE} ||= 'production';
@@ -51,7 +49,7 @@ sub run {
   # Preload application and configure server
   my $prefork = $self->prefork->cleanup(0);
   $prefork->load_app($app)->config->{hypnotoad}{pid_file}
-    //= catfile dirname($ENV{HYPNOTOAD_APP}), 'hypnotoad.pid';
+    //= path($ENV{HYPNOTOAD_APP})->dirname->child('hypnotoad.pid')->to_string;
   $self->configure('hypnotoad');
   weaken $self;
   $prefork->on(wait   => sub { $self->_manage });
@@ -187,7 +185,7 @@ For better scalability (epoll, kqueue) and to provide non-blocking name
 resolution, SOCKS5 as well as TLS support, the optional modules L<EV> (4.0+),
 L<Net::DNS::Native> (0.15+), L<IO::Socket::Socks> (0.64+) and
 L<IO::Socket::SSL> (1.94+) will be used automatically if possible. Individual
-features can also be disabled with the C<MOJO_NO_NDN>, C<MOJO_NO_SOCKS> and
+features can also be disabled with the C<MOJO_NO_NNR>, C<MOJO_NO_SOCKS> and
 C<MOJO_NO_TLS> environment variables.
 
 See L<Mojolicious::Guides::Cookbook/"DEPLOYMENT"> for more.
@@ -254,7 +252,8 @@ Maximum number of connections a worker is allowed to accept, before stopping
 gracefully and then getting replaced with a newly started worker, defaults to
 the value of L<Mojo::Server::Prefork/"accepts">. Setting the value to C<0> will
 allow workers to accept new connections indefinitely. Note that up to half of
-this value can be subtracted randomly to improve load balancing.
+this value can be subtracted randomly to improve load balancing, and to make
+sure that not all workers restart at the same time.
 
 =head2 backlog
 
@@ -280,7 +279,9 @@ instead for better performance.
 
 Maximum amount of time in seconds stopping a worker gracefully may take before
 being forced, defaults to the value of
-L<Mojo::Server::Prefork/"graceful_timeout">.
+L<Mojo::Server::Prefork/"graceful_timeout">. Note that this value should usually
+be a little larger than the maximum amount of time you expect any one request to
+take.
 
 =head2 heartbeat_interval
 
@@ -295,7 +296,9 @@ L<Mojo::Server::Prefork/"heartbeat_interval">.
 
 Maximum amount of time in seconds before a worker without a heartbeat will be
 stopped gracefully, defaults to the value of
-L<Mojo::Server::Prefork/"heartbeat_timeout">.
+L<Mojo::Server::Prefork/"heartbeat_timeout">. Note that this value should
+usually be a little larger than the maximum amount of time you expect any one
+operation to block the event loop.
 
 =head2 inactivity_timeout
 

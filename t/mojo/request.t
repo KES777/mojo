@@ -1,12 +1,11 @@
 use Mojo::Base -strict;
 
 use Test::More;
-use File::Spec::Functions 'catfile';
-use File::Temp 'tempdir';
 use IO::Compress::Gzip 'gzip';
 use Mojo::Content::Single;
 use Mojo::Content::MultiPart;
 use Mojo::Cookie::Request;
+use Mojo::File 'tempdir';
 use Mojo::Message::Request;
 use Mojo::URL;
 use Mojo::Util 'encode';
@@ -760,7 +759,8 @@ is $req->body_params->to_hash->{text2}, '', 'right value';
 is $req->upload('upload')->filename, 'hello.pl', 'right filename';
 ok !$req->upload('upload')->asset->is_file, 'stored in memory';
 is $req->upload('upload')->asset->size, 69, 'right size';
-my $file = catfile(tempdir(CLEANUP => 1), ("MOJO_TMP." . time . ".txt"));
+my $tempdir = tempdir;
+my $file    = $tempdir->child('MOJO_TMP.' . time . '.txt');
 is $req->upload('upload')->move_to($file)->filename, 'hello.pl',
   'right filename';
 ok unlink($file), 'unlinked file';
@@ -2098,7 +2098,7 @@ $req->parse("HTTP/1.1\x0d\x0a\x0d\x0a");
 ok $req->is_finished, 'request is finished';
 is $req->method,      'GET', 'right method';
 is $req->version,     '1.1', 'right version';
-is $req->url, "/#09azAZ!\$%&\'()*+,-./:;=?@%5B%5C%5D%5E_%60%7B%7C%7D~%C3%9F",
+is $req->url, "/#09azAZ!\$%25&\'()*+,-./:;=?@%5B%5C%5D%5E_%60%7B%7C%7D~%C3%9F",
   'right URL';
 
 # Abstract methods

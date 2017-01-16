@@ -1,7 +1,7 @@
 package Mojolicious::Command::test;
 use Mojo::Base 'Mojolicious::Command';
 
-use Getopt::Long qw(GetOptionsFromArray :config no_auto_abbrev no_ignore_case);
+use Mojo::Util 'getopt';
 
 has description => 'Run tests';
 has usage => sub { shift->extract_usage };
@@ -9,13 +9,12 @@ has usage => sub { shift->extract_usage };
 sub run {
   my ($self, @args) = @_;
 
-  GetOptionsFromArray \@args, 'v|verbose' => \$ENV{HARNESS_VERBOSE};
+  getopt \@args, 'v|verbose' => \$ENV{HARNESS_VERBOSE};
 
-  if (!@args && (my $home = $self->app->home)) {
-    die "Can't find test directory.\n" unless -d $home->rel_dir('t');
-    my $files = $home->list_files('t');
-    /\.t$/ and push @args, $home->rel_file("t/$_") for @$files;
-    say qq{Running tests from "}, $home->rel_dir('t') . '".';
+  if (!@args && (my $tests = $self->app->home->child('t'))) {
+    die "Can't find test directory.\n" unless -d $tests;
+    @args = $tests->list_tree->grep(qr/\.t$/)->map('to_string')->each;
+    say qq{Running tests from "$tests".};
   }
 
   $ENV{HARNESS_OPTIONS} //= 'c';

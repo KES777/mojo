@@ -78,9 +78,16 @@ In addition we will also keep the distribution installable up to a certain
 legacy version that we deem worthy of supporting, but not specifically optimize
 for it, this is currently 5.10.1.
 
+=head2 How well is Windows supported by Mojolicious?
+
+Windows is fully supported by L<Mojolicious>, some of the more advanced
+features, such as L<subprocesses|Mojo::IOLoop/"subprocess"> and the
+L<Hypnotoad|Mojo::Server::Hypnotoad> web server, will however require the use of
+the L<Windows Subsystem for Linux|https://msdn.microsoft.com/commandline/wsl/>.
+
 =head2 Do I need to clean my environment before testing Mojolicious?
 
-Mojolicious uses many environment variables both internally and externally,
+L<Mojolicious> uses many environment variables both internally and externally,
 notably (but not exclusively) those starting with the prefix C<MOJO_*> and
 C<PLACK_ENV>. The test suite expects a clean environment; testing with a
 non-standard environment is unsupported and is unlikely to succeed. Therefore
@@ -114,10 +121,12 @@ subroutine is finished, this is called continuation-passing style.
 
 No, it is not possible to magically make Perl code non-blocking. While
 L<Mojolicious> has been designed from the ground up for non-blocking I/O and
-event loops, taking advantage of this requires specialized code available
-through modules like L<Mojo::IOLoop> and L<Mojo::UserAgent>, or third-party
-event loops. In the documentation we often refer to this as real-time web, for
-more information see also L<Mojolicious::Guides::Cookbook/"REAL-TIME WEB">.
+event loops, taking advantage of this requires blocking code to be wrapped in
+L<subprocesses|Mojo::IOLoop/"subprocess">, and the use of specialized
+non-blocking code available through modules like L<Mojo::IOLoop> and
+L<Mojo::UserAgent>, or third-party event loops. In the documentation we often
+refer to this as real-time web, for more information see also
+L<Mojolicious::Guides::Cookbook/"REAL-TIME WEB">.
 
 =head2 What is an event loop?
 
@@ -155,11 +164,11 @@ allow matching of the C<.> character.
 
 =head2 Can I configure Hypnotoad from the command line?
 
-No, you can't, Hypnotoad is a bit special in this regard. Because when you
-initiate a zero downtime software upgrade (hot deployment), you are only really
-sending a C<USR2> signal to the already running server, and no other information
-can be passed along. What you can do instead, is to use a
-L<Mojolicious::Plugin::Config> or L<Mojolicious::Plugin::JSONConfig>
+No, you can't, L<Hypnotoad|Mojo::Server::Hypnotoad> is a bit special in this
+regard. Because when you initiate a zero downtime software upgrade (hot
+deployment), you are only really sending a C<USR2> signal to the already running
+server, and no other information can be passed along. What you can do instead,
+is to use a L<Mojolicious::Plugin::Config> or L<Mojolicious::Plugin::JSONConfig>
 configuration file.
 
   # myapp.conf
@@ -258,6 +267,17 @@ operation such as an infinite loop in your application can prevent this, and
 will force the affected worker to be restarted after a timeout. This timeout
 defaults to C<20> seconds and can be extended with the attribute
 L<Mojo::Server::Prefork/"heartbeat_timeout"> if your application requires it.
+
+=head2 What does "Connection already closed" mean?
+
+This error message usually appears after waiting for the results of a
+non-blocking operation for longer periods of time, because the underlying
+connection has been closed in the meantime and the value of the attribute
+L<Mojolicious::Controller/"tx"> is no longer available. While there might not be
+a way to prevent the connection from getting closed, you can also avoid this
+error message by keeping a reference to the transaction object that is not
+weakened. The helper L<Mojolicious::Plugin::DefaultHelpers/"delay"> will do this
+automatically for you.
 
 =head1 MORE
 

@@ -106,7 +106,7 @@ sub finish {
   my $self = shift;
 
   # WebSocket
-  my $tx = $self->tx;
+  my $tx = $self->tx || Carp::croak 'Connection already closed';
   $tx->finish(@_) and return $tx->established ? $self : $self->rendered(101)
     if $tx->is_websocket;
 
@@ -137,7 +137,7 @@ sub helpers { $_[0]->app->renderer->get_helper('')->($_[0]) }
 
 sub on {
   my ($self, $name, $cb) = @_;
-  my $tx = $self->tx;
+  my $tx = $self->tx || Carp::croak 'Connection already closed';
   $self->rendered(101) if $tx->is_websocket && !$tx->established;
   return $tx->on($name => sub { shift; $self->$cb(@_) });
 }
@@ -155,7 +155,7 @@ sub redirect_to {
   # Don't override 3xx status
   my $res = $self->res;
   $res->headers->location($self->url_for(@_));
-  return $self->rendered($res->is_status_class(300) ? () : 302);
+  return $self->rendered($res->is_redirect ? () : 302);
 }
 
 sub render {
@@ -218,8 +218,8 @@ sub rendered {
   return $self;
 }
 
-sub req { shift->tx->req }
-sub res { shift->tx->res }
+sub req { (shift->tx || Carp::croak 'Connection already closed')->req }
+sub res { (shift->tx || Carp::croak 'Connection already closed')->res }
 
 sub respond_to {
   my ($self, $args) = (shift, ref $_[0] ? $_[0] : {@_});
@@ -248,7 +248,7 @@ sub respond_to {
 
 sub send {
   my ($self, $msg, $cb) = @_;
-  my $tx = $self->tx;
+  my $tx = $self->tx || Carp::croak 'Connection already closed';
   Carp::croak 'No WebSocket connection to send message to'
     unless $tx->is_websocket;
   $tx->send($msg, $cb ? sub { shift; $self->$cb(@_) } : ());
@@ -402,7 +402,7 @@ a L<Mojolicious> object.
   $c->app->log->debug('Hello Mojo');
 
   # Generate path
-  my $path = $c->app->home->rel_file('templates/foo/bar.html.ep');
+  my $path = $c->app->home->child('templates', 'foo', 'bar.html.ep');
 
 =head2 match
 
@@ -728,6 +728,7 @@ Get L<Mojo::Message::Request> object from L</"tx">.
   my $req = $c->tx->req;
 
   # Extract request information
+  my $method = $c->req->method;
   my $url    = $c->req->url->to_abs;
   my $info   = $c->req->url->to_abs->userinfo;
   my $host   = $c->req->url->to_abs->host;
@@ -736,6 +737,7 @@ Get L<Mojo::Message::Request> object from L</"tx">.
   my $bytes  = $c->req->body;
   my $str    = $c->req->text;
   my $hash   = $c->req->params->to_hash;
+  my $all    = $c->req->uploads;
   my $value  = $c->req->json;
   my $foo    = $c->req->json('/23/foo');
   my $dom    = $c->req->dom;

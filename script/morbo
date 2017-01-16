@@ -3,22 +3,18 @@
 use strict;
 use warnings;
 
-use Getopt::Long qw(GetOptions :config no_auto_abbrev no_ignore_case);
+use Mojo::Server::Morbo;
+use Mojo::Util 'getopt';
+use Mojolicious::Command;
 
-GetOptions
+getopt \@ARGV,
   'h|help'     => \my $help,
   'l|listen=s' => \my @listen,
   'm|mode=s'   => \$ENV{MOJO_MODE},
   'v|verbose'  => \$ENV{MORBO_VERBOSE},
   'w|watch=s'  => \my @watch;
 
-my $app = shift;
-if ($help || !$app) {
-  require Mojolicious::Command;
-  die Mojolicious::Command->new->extract_usage;
-}
-
-require Mojo::Server::Morbo;
+die Mojolicious::Command->new->extract_usage if $help || !(my $app = shift);
 my $morbo = Mojo::Server::Morbo->new;
 $morbo->daemon->listen(\@listen) if @listen;
 $morbo->watch(\@watch) if @watch;

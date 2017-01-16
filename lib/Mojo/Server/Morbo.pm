@@ -4,8 +4,8 @@ use Mojo::Base -base;
 # "Linda: With Haley's Comet out of ice, Earth is experiencing the devastating
 #         effects of sudden, intense global warming.
 #  Morbo: Morbo is pleased but sticky."
+use Mojo::File 'path';
 use Mojo::Server::Daemon;
-use Mojo::Util 'files';
 use POSIX 'WNOHANG';
 
 has daemon => sub { Mojo::Server::Daemon->new };
@@ -16,8 +16,9 @@ sub modified_files {
 
   my $cache = $self->{cache} ||= {};
   my @files;
-  for my $file (map { -f $_ && -r _ ? $_ : files $_ } @{$self->watch}) {
+  for my $file (map { -f $_ && -r _ ? $_ : _list($_) } @{$self->watch}) {
     my ($size, $mtime) = (stat $file)[7, 9];
+    next unless defined $size and defined $mtime;
     my $stats = $cache->{$file} ||= [$^T, $size];
     next if $mtime <= $stats->[0] && $size == $stats->[1];
     @$stats = ($mtime, $size);
@@ -44,6 +45,8 @@ sub run {
   $self->_manage until $self->{finished} && !$self->{worker};
   exit 0;
 }
+
+sub _list { path(shift)->list_tree->map('to_string')->each }
 
 sub _manage {
   my $self = shift;
@@ -113,7 +116,7 @@ For better scalability (epoll, kqueue) and to provide non-blocking name
 resolution, SOCKS5 as well as TLS support, the optional modules L<EV> (4.0+),
 L<Net::DNS::Native> (0.15+), L<IO::Socket::Socks> (0.64+) and
 L<IO::Socket::SSL> (1.94+) will be used automatically if possible. Individual
-features can also be disabled with the C<MOJO_NO_NDN>, C<MOJO_NO_SOCKS> and
+features can also be disabled with the C<MOJO_NO_NNR>, C<MOJO_NO_SOCKS> and
 C<MOJO_NO_TLS> environment variables.
 
 See L<Mojolicious::Guides::Cookbook/"DEPLOYMENT"> for more.

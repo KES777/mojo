@@ -20,7 +20,7 @@ use Mojolicious::Lite;
 app->log->level('fatal');
 
 # Avoid exception template
-app->renderer->paths->[0] = app->home->rel_dir('public');
+app->renderer->paths->[0] = app->home->child('public');
 
 get '/link' => sub {
   my $c = shift;
@@ -55,6 +55,11 @@ websocket '/early_start' => sub {
       $c->finish(1000 => 'I ♥ Mojolicious!');
     }
   );
+};
+
+websocket '/early_finish' => sub {
+  my $c = shift;
+  Mojo::IOLoop->next_tick(sub { $c->rendered(101)->finish(4000, 'kaboom') });
 };
 
 websocket '/denied' => sub {
@@ -186,6 +191,18 @@ ok $established, 'connection established';
 is $status,      1000, 'right status';
 is $msg,         'I ♥ Mojolicious!', 'right message';
 is $result,      'test0test2test1', 'right result';
+
+# WebSocket connection gets closed very fast
+$status = undef;
+$ua->websocket(
+  '/early_finish' => sub {
+    my ($ua, $tx) = @_;
+    $tx->on(finish => sub { $status = [@_[1, 2]]; Mojo::IOLoop->stop });
+  }
+);
+Mojo::IOLoop->start;
+is $status->[0], 4000,     'right status';
+is $status->[1], 'kaboom', 'right message';
 
 # Connection denied
 ($stash, $code, $ws) = ();

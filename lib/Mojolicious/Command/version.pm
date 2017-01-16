@@ -2,6 +2,7 @@ package Mojolicious::Command::version;
 use Mojo::Base 'Mojolicious::Command';
 
 use Mojo::IOLoop::Client;
+use Mojo::IOLoop::TLS;
 use Mojolicious;
 
 has description => 'Show versions of available modules';
@@ -10,11 +11,11 @@ has usage => sub { shift->extract_usage };
 sub run {
   my $self = shift;
 
-  my $ev    = eval 'use Mojo::Reactor::EV; 1' ? $EV::VERSION : 'n/a';
-  my $class = 'Mojo::IOLoop::Client';
-  my $socks = $class->SOCKS ? $IO::Socket::Socks::VERSION : 'n/a';
-  my $tls   = $class->TLS ? $IO::Socket::SSL::VERSION : 'n/a';
-  my $ndn   = $class->NDN ? $Net::DNS::Native::VERSION : 'n/a';
+  my $ev = eval 'use Mojo::Reactor::EV; 1' ? $EV::VERSION : 'n/a';
+  my $socks
+    = Mojo::IOLoop::Client->can_socks ? $IO::Socket::Socks::VERSION : 'n/a';
+  my $tls = Mojo::IOLoop::TLS->can_tls    ? $IO::Socket::SSL::VERSION  : 'n/a';
+  my $nnr = Mojo::IOLoop::Client->can_nnr ? $Net::DNS::Native::VERSION : 'n/a';
 
   print <<EOF;
 CORE
@@ -25,7 +26,7 @@ OPTIONAL
   EV 4.0+                 ($ev)
   IO::Socket::Socks 0.64+ ($socks)
   IO::Socket::SSL 1.94+   ($tls)
-  Net::DNS::Native 0.15+  ($ndn)
+  Net::DNS::Native 0.15+  ($nnr)
 
 EOF
 

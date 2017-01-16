@@ -1,13 +1,12 @@
 package Mojolicious::Command::get;
 use Mojo::Base 'Mojolicious::Command';
 
-use Getopt::Long qw(GetOptionsFromArray :config no_auto_abbrev no_ignore_case);
 use Mojo::DOM;
 use Mojo::IOLoop;
 use Mojo::JSON qw(encode_json j);
 use Mojo::JSON::Pointer;
 use Mojo::UserAgent;
-use Mojo::Util qw(decode encode);
+use Mojo::Util qw(decode encode getopt);
 use Scalar::Util 'weaken';
 
 has description => 'Perform HTTP request';
@@ -16,13 +15,15 @@ has usage => sub { shift->extract_usage };
 sub run {
   my ($self, @args) = @_;
 
-  GetOptionsFromArray \@args,
-    'C|charset=s' => \my $charset,
-    'c|content=s' => \(my $content = ''),
-    'H|header=s'  => \my @headers,
-    'M|method=s'  => \(my $method = 'GET'),
-    'r|redirect'  => \my $redirect,
-    'v|verbose'   => \my $verbose;
+  getopt \@args,
+    'C|charset=s'            => \my $charset,
+    'c|content=s'            => \(my $content = ''),
+    'H|header=s'             => \my @headers,
+    'i|inactivity-timeout=i' => \my $inactivity,
+    'M|method=s'             => \(my $method = 'GET'),
+    'o|connect-timeout=i'    => \my $connect,
+    'r|redirect'             => \my $redirect,
+    'v|verbose'              => \my $verbose;
 
   @args = map { decode 'UTF-8', $_ } @args;
   die $self->usage unless my $url = shift @args;
@@ -35,6 +36,9 @@ sub run {
   my $ua = Mojo::UserAgent->new(ioloop => Mojo::IOLoop->singleton);
   $url !~ m!^/! ? $ua->proxy->detect : $ua->server->app($self->app);
   $ua->max_redirects(10) if $redirect;
+
+  $ua->inactivity_timeout($inactivity) if defined $inactivity;
+  $ua->connect_timeout($connect) if $connect;
 
   my $buffer = '';
   $ua->on(
@@ -50,7 +54,7 @@ sub run {
       # Stream content (ignore redirects)
       $tx->res->content->unsubscribe('read')->on(
         read => sub {
-          return if $redirect && $tx->res->is_status_class(300);
+          return if $redirect && $tx->res->is_redirect;
           defined $selector ? ($buffer .= pop) : print pop;
         }
       );
@@ -131,7 +135,7 @@ Mojolicious::Command::get - Get command
     ./myapp.pl get -H 'Accept: text/html' /hello.html 'head > title' text
     ./myapp.pl get //sri:secr3t@/secrets.json /1/content
     mojo get mojolicious.org
-    mojo get -v -r google.com
+    mojo get -v -r -o 25 -i 50 google.com
     mojo get -v -H 'Host: mojolicious.org' -H 'Accept: */*' mojolicious.org
     mojo get -M POST -H 'Content-Type: text/trololo' -c 'trololo' perl.org
     mojo get mojolicious.org 'head > title' text
@@ -142,20 +146,25 @@ Mojolicious::Command::get - Get command
     mojo get https://api.metacpan.org/v0/author/SRI /name
 
   Options:
-    -C, --charset <charset>     Charset of HTML/XML content, defaults to
-                                auto-detection
-    -c, --content <content>     Content to send with request
-    -H, --header <name:value>   Additional HTTP header
-    -h, --help                  Show this summary of available options
-        --home <path>           Path to home directory of your application,
-                                defaults to the value of MOJO_HOME or
-                                auto-detection
-    -M, --method <method>       HTTP method to use, defaults to "GET"
-    -m, --mode <name>           Operating mode for your application, defaults to
-                                the value of MOJO_MODE/PLACK_ENV or
-                                "development"
-    -r, --redirect              Follow up to 10 redirects
-    -v, --verbose               Print request and response headers to STDERR
+    -C, --charset <charset>              Charset of HTML/XML content, defaults
+                                         to auto-detection
+    -c, --content <content>              Content to send with request
+    -H, --header <name:value>            Additional HTTP header
+    -h, --help                           Show this summary of available options
+        --home <path>                    Path to home directory of your
+                                         application, defaults to the value of
+                                         MOJO_HOME or auto-detection
+    -i, --inactivity-timeout <seconds>   Inactivity timeout, defaults to the
+                                         value of MOJO_INACTIVITY_TIMEOUT or 20
+    -M, --method <method>                HTTP method to use, defaults to "GET"
+    -m, --mode <name>                    Operating mode for your application,
+                                         defaults to the value of
+                                         MOJO_MODE/PLACK_ENV or "development"
+    -o, --connect-timeout <seconds>      Connect timeout, defaults to the value
+                                         of MOJO_CONNECT_TIMEOUT or 10
+    -r, --redirect                       Follow up to 10 redirects
+    -v, --verbose                        Print request and response headers to
+                                         STDERR
 
 =head1 DESCRIPTION
 

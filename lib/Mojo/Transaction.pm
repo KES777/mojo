@@ -41,6 +41,12 @@ sub remote_address {
     : $self->original_remote_address;
 }
 
+sub result {
+  my $self = shift;
+  my $err  = $self->error;
+  return !$err || $err->{code} ? $self->res : croak $err->{message};
+}
+
 sub server_read  { croak 'Method "server_read" not implemented by subclass' }
 sub server_write { croak 'Method "server_write" not implemented by subclass' }
 
@@ -138,12 +144,40 @@ Remote interface port.
 
 HTTP request, defaults to a L<Mojo::Message::Request> object.
 
+  # Access request information
+  my $method = $tx->req->method;
+  my $url    = $tx->req->url->to_abs;
+  my $info   = $tx->req->url->to_abs->userinfo;
+  my $host   = $tx->req->url->to_abs->host;
+  my $agent  = $tx->req->headers->user_agent;
+  my $custom = $tx->req->headers->header('Custom-Header');
+  my $bytes  = $tx->req->body;
+  my $str    = $tx->req->text;
+  my $hash   = $tx->req->params->to_hash;
+  my $all    = $tx->req->uploads;
+  my $value  = $tx->req->json;
+  my $foo    = $tx->req->json('/23/foo');
+  my $dom    = $tx->req->dom;
+  my $bar    = $tx->req->dom('div.bar')->first->text;
+
 =head2 res
 
   my $res = $tx->res;
   $tx     = $tx->res(Mojo::Message::Response->new);
 
 HTTP response, defaults to a L<Mojo::Message::Response> object.
+
+  # Access response information
+  my $code    = $tx->res->code;
+  my $message = $tx->res->message;
+  my $server  = $tx->res->headers->server;
+  my $custom  = $tx->res->headers->header('Custom-Header');
+  my $bytes   = $tx->res->body;
+  my $str     = $tx->res->text;
+  my $value   = $tx->res->json;
+  my $foo     = $tx->res->json('/23/foo');
+  my $dom     = $tx->res->dom;
+  my $bar     = $tx->res->dom('div.bar')->first->text;
 
 =head1 METHODS
 
@@ -194,7 +228,7 @@ commonly used together with L</"success">.
   # Longer version
   my $err = $tx->req->error || $tx->res->error;
 
-  # Check for different kinds of errors
+  # Check for 4xx/5xx response and connection errors
   if (my $err = $tx->error) {
     die "$err->{code} response: $err->{message}" if $err->{code};
     die "Connection error: $err->{message}";
@@ -221,6 +255,20 @@ Same as L</"original_remote_address"> or the last value of the
 C<X-Forwarded-For> header if L</"req"> has been performed through a reverse
 proxy.
 
+=head2 result
+
+  my $res = $tx->result;
+
+Returns the L<Mojo::Message::Response> object from L</"res"> or dies if a
+connection error has occurred.
+
+  # Fine grained response handling (dies on connection errors)
+  my $res = $tx->result;
+  if    ($res->is_success)  { say $res->body }
+  elsif ($res->is_error)    { say $res->message }
+  elsif ($res->code == 301) { say $res->headers->location }
+  else                      { say 'Whatever...' }
+
 =head2 server_read
 
   $tx->server_read($bytes);
@@ -243,7 +291,7 @@ Returns the L<Mojo::Message::Response> object from L</"res"> if transaction was
 successful or C<undef> otherwise. Connection and parser errors have only a
 message in L</"error">, C<400> and C<500> responses also a code.
 
-  # Sensible exception handling
+  # Manual exception handling
   if (my $res = $tx->success) { say $res->body }
   else {
     my $err = $tx->error;

@@ -1,7 +1,7 @@
 use Mojo::Base -strict;
 
 BEGIN {
-  $ENV{MOJO_NO_SOCKS} = $ENV{MOJO_NO_TLS} = 1;
+  $ENV{MOJO_NO_NNR} = $ENV{MOJO_NO_SOCKS} = $ENV{MOJO_NO_TLS} = 1;
   $ENV{MOJO_REACTOR} = 'Mojo::Reactor::Poll';
 }
 
@@ -17,6 +17,8 @@ use Mojolicious::Lite;
 app->log->level('fatal');
 
 get '/' => {text => 'works!'};
+
+get '/huge' => {text => 'x' x 262144};
 
 my $timeout = undef;
 get '/timeout' => sub {
@@ -136,11 +138,16 @@ my $tx = $ua->build_tx(GET => '/');
 $tx->req->proxy($ua->server->url->scheme('socks'));
 $tx = $ua->start($tx);
 like $tx->error->{message}, qr/IO::Socket::Socks/, 'right error';
+ok !Mojo::IOLoop::Client->can_socks, 'no SOCKS5 support';
 
 # HTTPS request without TLS support
 $ua = Mojo::UserAgent->new;
 $tx = $ua->get($ua->server->url->scheme('https'));
 like $tx->error->{message}, qr/IO::Socket::SSL/, 'right error';
+ok !Mojo::IOLoop::TLS->can_tls, 'no TLS support';
+
+# No non-blocking name resolution
+ok !Mojo::IOLoop::Client->can_nnr, 'no non-blocking name resolution support';
 
 # Blocking
 $tx = $ua->get('/');
@@ -268,12 +275,20 @@ ok $tx->is_empty, 'transaction is empty';
 is $tx->res->body, '', 'no content';
 
 # Connection was kept alive
-$tx = $ua->get('/');
+$tx = $ua->head('/huge');
 ok $tx->success,    'successful';
 ok $tx->kept_alive, 'kept connection alive';
 is $tx->res->code, 200, 'right status';
+is $tx->res->headers->content_length, 262144, 'right "Content-Length" value';
+ok $tx->is_empty, 'transaction is empty';
+is $tx->res->body, '', 'no content';
+$tx = $ua->get('/huge');
+ok $tx->success,    'successful';
+ok $tx->kept_alive, 'kept connection alive';
+is $tx->res->code, 200, 'right status';
+is $tx->res->headers->content_length, 262144, 'right "Content-Length" value';
 ok !$tx->is_empty, 'transaction is not empty';
-is $tx->res->body, 'works!', 'right content';
+is $tx->res->body, 'x' x 262144, 'right content';
 
 # Non-blocking form
 ($success, $code, $body) = ();
@@ -317,6 +332,8 @@ ok !$tx->success, 'not successful';
 is $tx->error->{message}, 'Premature connection close', 'right error';
 is $timeout, 1, 'finish event has been emitted';
 like $log, qr/Inactivity timeout/, 'right log message';
+eval { $tx->result };
+like $@, qr/Premature connection close/, 'right error';
 
 # Client times out
 $ua->once(
@@ -333,6 +350,8 @@ $ua->once(
 $tx = $ua->get('/timeout?timeout=5');
 ok !$tx->success, 'not successful';
 is $tx->error->{message}, 'Inactivity timeout', 'right error';
+eval { $tx->result };
+like $@, qr/Inactivity timeout/, 'right error';
 
 # Keep alive connection times out
 my $id;
@@ -362,7 +381,9 @@ ok $tx->res->is_limit_exceeded, 'limit is exceeded';
 
 # 404 response
 $tx = $ua->get('/does_not_exist');
-ok !$tx->success,    'not successful';
+ok !$tx->success, 'not successful';
+ok $tx->result, 'has a result';
+is $tx->result->code, 404, 'right status';
 ok !$tx->kept_alive, 'kept connection not alive';
 ok $tx->keep_alive, 'keep connection alive';
 is $tx->error->{message}, 'Not Found', 'right error';
@@ -378,7 +399,9 @@ is $tx->error->{code},    404,         'right status';
 $tx = $ua->build_tx(GET => '/echo' => 'Hello GZip!');
 $tx = $ua->start($ua->build_tx(GET => '/echo' => 'Hello GZip!'));
 ok $tx->success, 'successful';
-is $tx->res->code, 200, 'right status';
+ok $tx->result,  'has a result';
+is $tx->result->code, 200, 'right status';
+is $tx->res->code,    200, 'right status';
 is $tx->res->headers->content_encoding, undef, 'no "Content-Encoding" value';
 is $tx->res->body, 'Hello GZip!', 'right content';
 $tx = $ua->build_tx(GET => '/echo' => 'Hello GZip!');

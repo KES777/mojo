@@ -3,6 +3,7 @@ use Mojo::Base 'Mojo::Message';
 
 use Mojo::Cookie::Response;
 use Mojo::Date;
+use Mojo::Util 'deprecated';
 
 has [qw(code message)];
 
@@ -76,8 +77,7 @@ sub cookies {
 
   # Parse cookies
   my $headers = $self->headers;
-  return [map { @{Mojo::Cookie::Response->parse($_)} } $headers->set_cookie]
-    unless @_;
+  return [@{Mojo::Cookie::Response->parse($headers->set_cookie)}] unless @_;
 
   # Add cookies
   $headers->add('Set-Cookie' => "$_")
@@ -120,17 +120,27 @@ sub get_start_line_chunk {
   return substr $self->{start_buffer}, $offset, 131072;
 }
 
+sub is_client_error { shift->_status_class(400) }
+
 sub is_empty {
   my $self = shift;
   return undef unless my $code = $self->code;
-  return $self->is_status_class(100) || $code == 204 || $code == 304;
+  return $self->is_info || $code == 204 || $code == 304;
 }
 
+sub is_error { shift->_status_class(400, 500) }
+sub is_info { shift->_status_class(100) }
+sub is_redirect     { shift->_status_class(300) }
+sub is_server_error { shift->_status_class(500) }
+
+# DEPRECATED!
 sub is_status_class {
-  my ($self, $class) = @_;
-  return undef unless my $code = $self->code;
-  return $code >= $class && $code < ($class + 100);
+  deprecated 'Mojo::Message::Response::is_status_class is DEPRECATED'
+    . ' in favor of new is_* methods';
+  shift->_status_class(@_);
 }
+
+sub is_success { shift->_status_class(200) }
 
 sub start_line_size { length shift->_start_line->{start_buffer} }
 
@@ -143,6 +153,12 @@ sub _start_line {
   $self->{start_buffer} = "HTTP/@{[$self->version]} $code $msg\x0d\x0a";
 
   return $self;
+}
+
+sub _status_class {
+  my ($self, @classes) = @_;
+  return undef unless my $code = $self->code;
+  return !!grep { $code >= $_ && $code < ($_ + 100) } @classes;
 }
 
 1;
@@ -246,25 +262,47 @@ Make sure response has all required headers.
 Get a chunk of status-line data starting from a specific position. Note that
 this method finalizes the response.
 
+=head2 is_client_error
+
+  my $bool = $res->is_client_error;
+
+Check if this response has a C<4xx> status L</"code">.
+
 =head2 is_empty
 
   my $bool = $res->is_empty;
 
-Check if this response has a C<1xx>, C<204> or C<304> status code.
+Check if this response has a C<1xx>, C<204> or C<304> status L</"code">.
 
-=head2 is_status_class
+=head2 is_error
 
-  my $bool = $res->is_status_class(200);
+  my $bool = $res->is_error;
 
-Check response status class.
+Check if this response has a C<4xx> or C<5xx> status L</"code">.
 
-  # True
-  Mojo::Message::Response->new->code(304)->is_status_class(300);
-  Mojo::Message::Response->new->code(404)->is_status_class(400);
+=head2 is_info
 
-  # False
-  Mojo::Message::Response->new->code(404)->is_status_class(300);
-  Mojo::Message::Response->new->code(404)->is_status_class(200);
+  my $bool = $res->is_info;
+
+Check if this response has a C<1xx> status L</"code">.
+
+=head2 is_redirect
+
+  my $bool = $res->is_redirect;
+
+Check if this response has a C<3xx> status L</"code">.
+
+=head2 is_server_error
+
+  my $bool = $res->is_server_error;
+
+Check if this response has a C<5xx> status L</"code">.
+
+=head2 is_success
+
+  my $bool = $res->is_success;
+
+Check if this response has a C<2xx> status L</"code">.
 
 =head2 start_line_size
 

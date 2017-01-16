@@ -2,7 +2,8 @@ package Mojo::Server::Prefork;
 use Mojo::Base 'Mojo::Server::Daemon';
 
 use Config;
-use File::Spec::Functions qw(catfile tmpdir);
+use File::Spec::Functions 'tmpdir';
+use Mojo::File 'path';
 use Mojo::Util 'steady_time';
 use POSIX 'WNOHANG';
 use Scalar::Util 'weaken';
@@ -11,7 +12,7 @@ has accepts => 10000;
 has cleanup => 1;
 has [qw(graceful_timeout heartbeat_timeout)] => 20;
 has heartbeat_interval => 5;
-has pid_file           => sub { catfile tmpdir, 'prefork.pid' };
+has pid_file           => sub { path(tmpdir, 'prefork.pid')->to_string };
 has workers            => 4;
 
 sub DESTROY { unlink $_[0]->pid_file if $_[0]->cleanup }
@@ -148,6 +149,7 @@ sub _spawn {
   # Clean worker environment
   $SIG{$_} = 'DEFAULT' for qw(CHLD INT TERM TTIN TTOU);
   $SIG{QUIT} = sub { $loop->stop_gracefully };
+  $loop->on(finish => sub { $self->max_requests(1)->close_idle_connections });
   delete $self->{reader};
   srand;
 
@@ -232,7 +234,7 @@ For better scalability (epoll, kqueue) and to provide non-blocking name
 resolution, SOCKS5 as well as TLS support, the optional modules L<EV> (4.0+),
 L<Net::DNS::Native> (0.15+), L<IO::Socket::Socks> (0.64+) and
 L<IO::Socket::SSL> (1.84+) will be used automatically if possible. Individual
-features can also be disabled with the C<MOJO_NO_NDN>, C<MOJO_NO_SOCKS> and
+features can also be disabled with the C<MOJO_NO_NNR>, C<MOJO_NO_SOCKS> and
 C<MOJO_NO_TLS> environment variables.
 
 See L<Mojolicious::Guides::Cookbook/"DEPLOYMENT"> for more.
@@ -357,7 +359,8 @@ Maximum number of connections a worker is allowed to accept, before stopping
 gracefully and then getting replaced with a newly started worker, passed along
 to L<Mojo::IOLoop/"max_accepts">, defaults to C<10000>. Setting the value to
 C<0> will allow workers to accept new connections indefinitely. Note that up to
-half of this value can be subtracted randomly to improve load balancing.
+half of this value can be subtracted randomly to improve load balancing, and to
+make sure that not all workers restart at the same time.
 
 =head2 cleanup
 
@@ -373,7 +376,8 @@ a true value.
   $prefork    = $prefork->graceful_timeout(15);
 
 Maximum amount of time in seconds stopping a worker gracefully may take before
-being forced, defaults to C<20>.
+being forced, defaults to C<20>. Note that this value should usually be a little
+larger than the maximum amount of time you expect any one request to take.
 
 =head2 heartbeat_interval
 
@@ -388,7 +392,9 @@ Heartbeat interval in seconds, defaults to C<5>.
   $prefork    = $prefork->heartbeat_timeout(2);
 
 Maximum amount of time in seconds before a worker without a heartbeat will be
-stopped gracefully, defaults to C<20>.
+stopped gracefully, defaults to C<20>. Note that this value should usually be a
+little larger than the maximum amount of time you expect any one operation to
+block the event loop.
 
 =head2 pid_file
 

@@ -1,12 +1,14 @@
 use Mojo::Base -strict;
 
-BEGIN { $ENV{MOJO_REACTOR} = 'Mojo::Reactor::Poll' }
+BEGIN {
+  $ENV{MOJO_NO_TLS}  = 1;
+  $ENV{MOJO_REACTOR} = 'Mojo::Reactor::Poll';
+}
 
 use Test::More;
-use Cwd 'abs_path';
-use File::Spec::Functions 'catdir';
 use FindBin;
 use Mojo;
+use Mojo::File 'path';
 use Mojo::IOLoop;
 use Mojo::Log;
 use Mojo::Server::Daemon;
@@ -65,8 +67,8 @@ is $tx->res->body, 'Hello TestApp!', 'right content';
 
 # Optional home detection
 my @path = qw(th is mojo dir wil l never-ever exist);
-my $app = Mojo->new(home => Mojo::Home->new(catdir @path));
-is $app->home, catdir(@path), 'right home directory';
+my $app = Mojo->new(home => Mojo::Home->new(@path));
+is $app->home, path(@path), 'right home directory';
 
 # Config
 is $app->config('foo'), undef, 'no value';
@@ -83,7 +85,7 @@ is_deeply $app->config, {foo => 'bar', baz => 'yada', test => 23},
 my $daemon = Mojo::Server::Daemon->new;
 my $path   = "$FindBin::Bin/lib/../lib/myapp.pl";
 is ref $daemon->load_app($path), 'Mojolicious::Lite', 'right reference';
-is $daemon->app->config('script'), abs_path($path), 'right script name';
+is $daemon->app->config('script'), path($path)->to_abs, 'right script name';
 is ref $daemon->build_app('TestApp'), 'TestApp', 'right reference';
 is ref $daemon->app, 'TestApp', 'right reference';
 
@@ -323,6 +325,13 @@ $tx = $ua->get("http://127.0.0.1:$port/keep_alive/1");
 ok !$tx->keep_alive, 'will not be kept alive';
 is $tx->res->code, 200,         'right status';
 is $tx->res->body, 'Whatever!', 'right content';
+
+# No TLS support
+eval {
+  Mojo::Server::Daemon->new(listen => ['https://127.0.0.1'], silent => 1)
+    ->start;
+};
+like $@, qr/IO::Socket::SSL/, 'right error';
 
 # Abstract methods
 eval { Mojo::Server->run };

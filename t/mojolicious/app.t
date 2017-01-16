@@ -11,11 +11,12 @@ use Test::More;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 
-use File::Spec::Functions 'catfile';
 use Mojo::Asset::File;
 use Mojo::Date;
+use Mojo::File 'path';
 use Mojo::IOLoop;
 use Mojolicious;
+use Mojolicious::Controller;
 use Test::Mojo;
 
 # Missing config file
@@ -389,7 +390,7 @@ like $log, qr/Controller "MojoliciousTest::Another" does not exist/,
 $t->app->log->unsubscribe(message => $cb);
 
 # Check Last-Modified header for static files
-my $path = catfile($FindBin::Bin, 'public_dev', 'hello.txt');
+my $path = path($FindBin::Bin, 'public_dev', 'hello.txt');
 my $size = Mojo::Asset::File->new(path => $path)->size;
 my $mtime
   = Mojo::Date->new(Mojo::Asset::File->new(path => $path)->mtime)->to_string;
@@ -448,18 +449,18 @@ $t->get_ok('/just/some/template')->status_is(200)
   ->header_is(Server => 'Mojolicious (Perl)')
   ->content_is("Development template with high precedence.\n");
 
-# Check develpment mode log level
-my $app = Mojolicious->new;
-is $app->log->level, 'debug', 'right log level';
+# Check default development mode log level
+is(Mojolicious->new->log->level, 'debug', 'right log level');
+
+# Check non-development mode log level
+is(Mojolicious->new->mode('test')->log->level, 'info', 'right log level');
 
 # Make sure we can override attributes with constructor arguments
-$app = MojoliciousTest->new(mode => 'test');
-is $app->mode, 'test', 'right mode';
-$app = MojoliciousTest->new({mode => 'test'});
-is $app->mode, 'test', 'right mode';
+is(MojoliciousTest->new(mode => 'test')->mode, 'test', 'right mode');
+is(MojoliciousTest->new({mode => 'test'})->mode, 'test', 'right mode');
 
 # Persistent error
-$app = MojoliciousTest->new;
+my $app = MojoliciousTest->new;
 my $tx = $t->ua->build_tx(GET => '/foo');
 $app->handler($tx);
 is $tx->res->code, 200, 'right status';
@@ -597,6 +598,20 @@ $t->get_ok('/foo/session')->status_is(200)
 # Mixed formats
 $t->get_ok('/rss.xml')->status_is(200)->content_type_is('application/rss+xml')
   ->content_like(qr!<\?xml version="1.0" encoding="UTF-8"\?><rss />!);
+
+# Connection already closed
+eval { Mojolicious::Controller->new->finish };
+like $@, qr/Connection already closed/, 'right error';
+eval {
+  Mojolicious::Controller->new->on(finish => sub { });
+};
+like $@, qr/Connection already closed/, 'right error';
+eval { Mojolicious::Controller->new->req };
+like $@, qr/Connection already closed/, 'right error';
+eval { Mojolicious::Controller->new->res };
+like $@, qr/Connection already closed/, 'right error';
+eval { Mojolicious::Controller->new->send('whatever') };
+like $@, qr/Connection already closed/, 'right error';
 
 # Abstract methods
 eval { Mojolicious::Plugin->register };

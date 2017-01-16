@@ -122,9 +122,9 @@ script.
 =head2 Hypnotoad
 
 For bigger applications L<Mojolicious> contains the UNIX optimized pre-forking
-web server L<Mojo::Server::Hypnotoad>, which can take advantage of multiple CPU
-cores and copy-on-write memory management to scale up to thousands of
-concurrent client connections.
+web server L<Hypnotoad|Mojo::Server::Hypnotoad>, which can take advantage of
+multiple CPU cores and copy-on-write memory management to scale up to thousands
+of concurrent client connections.
 
   Mojo::Server::Hypnotoad
   |- Mojo::Server::Daemon [1]
@@ -172,15 +172,16 @@ losing a single incoming connection, just by running the command above again.
   $ hypnotoad ./script/my_app
   Starting hot deployment for Hypnotoad server 31841.
 
-You might also want to enable proxy support if you're using Hypnotoad behind a
-reverse proxy. This allows L<Mojolicious> to automatically pick up the
-C<X-Forwarded-For> and C<X-Forwarded-Proto> headers.
+You might also want to enable proxy support if you're using
+L<Hypnotoad|Mojo::Server::Hypnotoad> behind a reverse proxy. This allows
+L<Mojolicious> to automatically pick up the C<X-Forwarded-For> and
+C<X-Forwarded-Proto> headers.
 
   # myapp.conf
   {hypnotoad => {proxy => 1}};
 
-To manage Hypnotoad with systemd, you can use a unit configuration file like
-this.
+To manage L<Hypnotoad|Mojo::Server::Hypnotoad> with systemd, you can use a unit
+configuration file like this.
 
   [Unit]
   Description=My Mojolicious application
@@ -198,10 +199,10 @@ this.
 
 =head2 Zero downtime software upgrades
 
-Hypnotoad makes zero downtime software upgrades (hot deployment) very simple,
-as you can see above, but on modern operating systems that support the
-C<SO_REUSEPORT> socket option, there is also another method available that
-works with all built-in web servers.
+L<Hypnotoad|Mojo::Server::Hypnotoad> makes zero downtime software upgrades (hot
+deployment) very simple, as you can see above, but on modern operating systems
+that support the C<SO_REUSEPORT> socket option, there is also another method
+available that works with all built-in web servers.
 
   $ ./script/my_app prefork -P /tmp/first.pid -l http://*:8080?reuse=1
   Server available at http://127.0.0.1:8080
@@ -218,9 +219,9 @@ parameter.
 
 =head2 Nginx
 
-One of the most popular setups these days is Hypnotoad behind an
-L<Nginx|http://nginx.org> reverse proxy, which even supports WebSockets in
-newer versions.
+One of the most popular setups these days is
+L<Hypnotoad|Mojo::Server::Hypnotoad> behind an L<Nginx|http://nginx.org> reverse
+proxy, which even supports WebSockets in newer versions.
 
   upstream myapp {
     server 127.0.0.1:8080;
@@ -248,8 +249,7 @@ if you need WebSocket support, newer versions come with C<mod_proxy_wstunnel>.
   <VirtualHost *:80>
     ServerName localhost
     <Proxy *>
-      Order deny,allow
-      Allow from all
+      Require all granted
     </Proxy>
     ProxyRequests Off
     ProxyPreserveHost On
@@ -587,6 +587,38 @@ created at startup time.
 Just remember that all these non-blocking operations are processed
 cooperatively, so your callbacks shouldn't block for too long.
 
+=head2 Subprocesses
+
+You can also use subprocesses, created with L<Mojo::IOLoop/"subprocess">, to
+perform computationally expensive operations without blocking the event loop.
+
+  use Mojolicious::Lite;
+  use Mojo::IOLoop;
+
+  # Operation that would block the event loop for 5 seconds
+  get '/' => sub {
+    my $c = shift;
+    Mojo::IOLoop->subprocess(
+      sub {
+        my $subprocess = shift;
+        sleep 5;
+        return '♥', 'Mojolicious';
+      },
+      sub {
+        my ($subprocess, $err, @results) = @_;
+        $c->reply->exception($err) and return if $err;
+        $c->render(text => "I $results[0] $results[1]!");
+      }
+    );
+  };
+
+  app->start;
+
+The first callback will be executed in a child process, without blocking the
+event loop of the parent process. The results of the first callback will then be
+shared between both processes, and the second callback executed in the parent
+process.
+
 =head2 Exceptions in non-blocking operations
 
 Since timers and other non-blocking operations are running solely in the event
@@ -919,6 +951,32 @@ application.
 When we say L<Mojolicious> is a web framework we actually mean it, with
 L<Mojo::UserAgent> there's a full featured HTTP and WebSocket user agent built
 right in.
+
+=head2 REST web services
+
+Requests can be performed very comfortably with methods like
+L<Mojo::UserAgent/"get">, and always result in a L<Mojo::Transaction::HTTP>
+object, which has many useful attributes and methods. You can check for
+connection errors with L<Mojo::Transaction/"result">, or access HTTP request and
+response information directly through L<Mojo::Transaction/"req"> and
+L<Mojo::Transaction/"res">.
+
+  use Mojo::UserAgent;
+
+  # Request a resource and make sure there were no connection errors
+  my $ua = Mojo::UserAgent->new;
+  my $tx = $ua->get('mojolicious.org/perldoc/Mojo' => {Accept => 'text/plain'});
+  my $res = $tx->result;
+
+  # Decide what to do with its representation
+  if    ($res->is_success)  { say $res->body }
+  elsif ($res->is_error)    { say $res->message }
+  elsif ($res->code == 301) { say $res->headers->location }
+  else                      { say 'Whatever...' }
+
+While methods like L<Mojo::Message::Response/"is_success"> and
+L<Mojo::Message::Response/"is_error"> serve as building blocks for more
+sophisticated REST clients.
 
 =head2 Web scraping
 
@@ -1485,8 +1543,8 @@ automatically installed with the modules.
   package MyApp;
   use Mojo::Base 'Mojolicious';
 
-  use File::Basename 'dirname';
-  use File::Spec::Functions 'catdir';
+  use Mojo::File 'path';
+  use Mojo::Home;
 
   # Every CPAN module needs a version
   our $VERSION = '1.0';
@@ -1495,13 +1553,13 @@ automatically installed with the modules.
     my $self = shift;
 
     # Switch to installable home directory
-    $self->home->parse(catdir(dirname(__FILE__), 'MyApp'));
+    $self->home(Mojo::Home->new(path(__FILE__)->dirname->child('MyApp')));
 
     # Switch to installable "public" directory
-    $self->static->paths->[0] = $self->home->rel_dir('public');
+    $self->static->paths->[0] = $self->home->child('public');
 
     # Switch to installable "templates" directory
-    $self->renderer->paths->[0] = $self->home->rel_dir('templates');
+    $self->renderer->paths->[0] = $self->home->child('templates');
 
     $self->plugin('PODRenderer');
 

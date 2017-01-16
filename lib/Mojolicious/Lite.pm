@@ -2,8 +2,7 @@ package Mojolicious::Lite;
 use Mojo::Base 'Mojolicious';
 
 # "Bender: Bite my shiny metal ass!"
-use File::Basename qw(basename dirname);
-use File::Spec::Functions 'catdir';
+use Mojo::File 'path';
 use Mojo::UserAgent::Server;
 use Mojo::Util 'monkey_patch';
 
@@ -13,7 +12,7 @@ sub import {
   $ENV{MOJO_EXE} ||= (caller)[1];
 
   # Reuse home directory if possible
-  local $ENV{MOJO_HOME} = catdir split('/', dirname $ENV{MOJO_EXE})
+  local $ENV{MOJO_HOME} = path($ENV{MOJO_EXE})->dirname->to_string
     unless $ENV{MOJO_HOME};
 
   # Initialize application class
@@ -22,7 +21,7 @@ sub import {
   push @{"${caller}::ISA"}, 'Mojo';
 
   # Generate moniker based on filename
-  my $moniker = basename $ENV{MOJO_EXE};
+  my $moniker = path($ENV{MOJO_EXE})->basename;
   $moniker =~ s/\.(?:pl|pm|t)$//i;
   my $app = shift->new(moniker => $moniker);
 

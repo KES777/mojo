@@ -3,12 +3,12 @@ use Mojo::Base -strict;
 BEGIN { $ENV{MOJO_REACTOR} = 'Mojo::Reactor::Poll' }
 
 use Test::More;
-use Mojo::IOLoop::Server;
+use Mojo::IOLoop::TLS;
 
 plan skip_all => 'set TEST_TLS to enable this test (developer only!)'
   unless $ENV{TEST_TLS};
 plan skip_all => 'IO::Socket::SSL 1.94+ required for this test!'
-  unless Mojo::IOLoop::Server::TLS;
+  unless Mojo::IOLoop::TLS->can_tls;
 
 use Mojo::IOLoop;
 use Mojo::Server::Daemon;
@@ -296,5 +296,27 @@ $ua->connect_timeout(10);
 $tx = $ua->get("https://127.0.0.1:$port/proxy");
 is $tx->res->code, 200, 'right status';
 is $tx->res->body, "https://127.0.0.1:$port/proxy", 'right content';
+
+# Blocking request to bad proxy
+$ua    = Mojo::UserAgent->new;
+$proxy = Mojo::IOLoop::Server->generate_port;
+$ua->proxy->https("http://127.0.0.1:$proxy");
+$tx = $ua->get("https://127.0.0.1:$port/proxy");
+ok !$tx->success, 'no success';
+is $tx->error->{message}, 'Proxy connection failed', 'right error';
+
+# Non-blocking request to bad proxy
+($success, $err) = ();
+$ua->get(
+  "https://127.0.0.1:$port/proxy" => sub {
+    my ($ua, $tx) = @_;
+    $success = $tx->success;
+    $err     = $tx->error;
+    Mojo::IOLoop->stop;
+  }
+);
+Mojo::IOLoop->start;
+ok !$success, 'no success';
+is $err->{message}, 'Proxy connection failed', 'right error';
 
 done_testing();

@@ -4,19 +4,16 @@ use FindBin;
 use lib "$FindBin::Bin/lib";
 
 use Test::More;
-use File::Basename 'dirname';
-use File::Spec::Functions qw(catdir catfile splitdir);
-use File::Temp 'tempdir';
 use Mojo::ByteStream 'b';
 use Mojo::DeprecationTest;
 
 use Mojo::Util
   qw(b64_decode b64_encode camelize class_to_file class_to_path decamelize),
-  qw(decode dumper encode files hmac_sha1_sum html_unescape md5_bytes md5_sum),
+  qw(decode dumper encode getopt hmac_sha1_sum html_unescape md5_bytes md5_sum),
   qw(monkey_patch punycode_decode punycode_encode quote secure_compare),
-  qw(secure_compare sha1_bytes sha1_sum slurp split_cookie_header),
-  qw(split_header spurt steady_time tablify term_escape trim unindent unquote),
-  qw(url_escape url_unescape xml_escape xor_encode);
+  qw(sha1_bytes sha1_sum split_cookie_header split_header steady_time tablify),
+  qw(term_escape trim unindent unquote url_escape url_unescape xml_escape),
+  qw(xor_encode);
 
 # camelize
 is camelize('foo_bar_baz'), 'FooBarBaz', 'right camelized result';
@@ -114,6 +111,18 @@ $tree   = [
   ['a',  'b']
 ];
 is_deeply split_cookie_header($header), $tree, 'right result';
+
+# getopt
+getopt ['--charset', 'UTF-8'], 'c|charset=s' => \my $charset;
+is $charset, 'UTF-8', 'right string';
+my $array = ['-t', 'test', '-h', '--whatever', 'Whatever!', 'stuff'];
+getopt $array, ['pass_through'], 't|test=s' => \my $test;
+is $test, 'test', 'right string';
+is_deeply $array, ['-h', '--whatever', 'Whatever!', 'stuff'], 'right structure';
+getopt $array, 'h' => \my $flag, 'w|whatever=s' => \my $whatever;
+ok $flag, 'flag has been set';
+is $whatever, 'Whatever!', 'right string';
+is_deeply $array, ['stuff'], 'right structure';
 
 # unindent
 is unindent(" test\n  123\n 456\n"), "test\n 123\n456\n",
@@ -399,32 +408,6 @@ is xor_encode("\x10\x1d\x14\x14\x17\x58\x0f\x17\x0a\x14\x1c", 'x'),
   'hello world', 'right result';
 is xor_encode('hello', '123456789'), "\x59\x57\x5f\x58\x5a", 'right result';
 is xor_encode("\x59\x57\x5f\x58\x5a", '123456789'), 'hello', 'right result';
-
-# slurp
-is slurp(catfile(dirname(__FILE__), 'templates', 'exception.mt')),
-  "test\n% die;\n123\n", 'right content';
-
-# spurt
-my $dir = tempdir CLEANUP => 1;
-my $file = catfile $dir, 'test.txt';
-spurt "just\nworks!", $file;
-is slurp($file), "just\nworks!", 'successful roundtrip';
-
-# files
-is_deeply [files 'does_not_exist'], [], 'no files';
-is_deeply [files __FILE__],         [], 'no files';
-my $lib = catdir dirname(__FILE__), 'lib', 'Mojo';
-my @files = map { catfile $lib, split '/' } (
-  'BaseTest/Base1.pm',  'BaseTest/Base2.pm',
-  'BaseTest/Base3.pm',  'DeprecationTest.pm',
-  'LoaderException.pm', 'LoaderException2.pm',
-  'LoaderTest/A.pm',    'LoaderTest/B.pm',
-  'LoaderTest/C.pm'
-);
-is_deeply [map { catfile splitdir $_ } files $lib], \@files, 'right files';
-my @hidden = map { catfile $lib, split '/' } '.hidden.txt', '.test/hidden.txt';
-is_deeply [map { catfile splitdir $_ } files $lib, {hidden => 1}],
-  [@hidden, @files], 'right files';
 
 # steady_time
 like steady_time, qr/^[\d.]+$/, 'high resolution time';

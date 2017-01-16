@@ -1,5 +1,104 @@
 
-7.04  2016-08-21
+7.20  2017-01-15
+
+7.19  2017-01-14
+  - Added module Mojo::IOLoop::TLS.
+  - Added can_nnr and can_socks methods to Mojo::IOLoop::Client.
+
+7.18  2017-01-11
+  - Fixed support for relative %INC paths in Mojo::Home.
+  - Fixed a bug in Mojo::URL where invalid fragment strings could be generated.
+
+7.17  2017-01-11
+  - Fixed Windows bugs in Mojo::File. (kmx)
+
+7.16  2017-01-10
+  - Fixed Windows bugs in Mojo::File. (kmx)
+
+7.15  2017-01-09
+  - Deprecated Mojo::ByteStream::slurp and Mojo::Util::slurp in favor of
+    Mojo::File::slurp.
+  - Deprecated Mojo::ByteStream::spurt and Mojo::Util::spurt in favor of
+    Mojo::File::spurt.
+  - Deprecated Mojo::Util::files in favor of Mojo::File::list_tree.
+  - Deprecated Mojo::Home::lib_dir, Mojo::Home::parse, Mojo::Home::parts in
+    favor of new features inherited from the Mojo::File base class.
+  - Added module Mojo::File.
+  - Improved Mojo::Home to be a subclass of Mojo::File.
+  - Improved mojo_lib_dir and rel_file methods in Mojo::Home to return
+    Mojo::Home objects.
+  - Improved rel_file methods in Mojolicious::Command to return Mojo::File
+    objects.
+  - Improved every_param and param methods in Mojolicious::Validator::Validation
+    to use the current topic.
+
+7.14  2017-01-04
+  - Deprecated Mojo::Home::list_files in favor of Mojo::Util::files.
+  - Deprecated Mojo::Home::rel_dir in favor of Mojo::Home::rel_file.
+  - Deprecated Mojolicious::Command::rel_dir in favor of
+    Mojolicious::Command::rel_file.
+  - Fixed a bug in Mojo::IOLoop::Subprocess where the pipe used for IPC could
+    disappear because of a timeout.
+
+7.13  2016-12-23
+  - Deprecated Mojo::Message::Response::is_status_class in favor of new is_*
+    methods.
+  - Added result method to Mojo::Transaction.
+  - Added is_client_error, is_error, is_info, is_redirect, is_server_error and
+    is_success methods to Mojo::Message::Response.
+  - Fixed bug where Morbo could not handle broken symlinks. (Grinnz)
+
+7.12  2016-12-18
+  - Added button_to and csrf_button_to helpers to
+    Mojolicious::Plugin::TagHelpers.
+  - Removed experimental status from Mojo::IOLoop::Subprocess.
+  - Removed experimental status from subprocess method in Mojo::IOLoop.
+
+7.11  2016-11-30
+  - Added EXPERIMENTAL close_idle_connections method to Mojo::Server::Daemon.
+  - Improved one_tick method in Mojo::IOLoop to protect from recursion, similar
+    to the start method.
+  - Improved log attribute in Mojolicious to make it easier to override default
+    settings. (jberger)
+  - Fixed bug in Mojo::Server::Prefork where workers would accept keep-alive
+    requests after a graceful shutdown had already been initiated.
+  - Fixed bugs in Mojo::Util and Mojo::Asset::File where incomplete writes would
+    not be recognized as errors. (bobkare, sri)
+
+7.10  2016-11-01
+  - Added getopt function to Mojo::Util.
+
+7.09  2016-10-22
+  - Added every_header method to Mojo::Headers.
+  - Fixed redirect bug in Mojo::UserAgent::Transactor.
+  - Fixed a few proxy bugs in Mojo::UserAgent.
+
+7.08  2016-09-23
+  - Added -i and -o options to get command.
+  - Updated jQuery to version 3.1.1.
+  - Improved accuracy of finished_ok test in Test::Mojo.
+  - Fixed state transition bug in Mojo::Transaction::HTTP that caused message
+    bodies to be included in responses to HEAD requests.
+
+7.07  2016-09-20
+  - Fixed bug in Mojo::UserAgent::Transactor where 303 redirects would not be
+    followed correctly with GET requests. (jberger)
+
+7.06  2016-09-17
+  - Fixed bug where Mojolicious::Renderer would wrap text in layouts.
+  - Fixed a few test description encoding bugs in Test::Mojo.
+
+7.05  2016-08-29
+  - Fixed bug in Mojo::IOLoop::Subprocess where EV would steal the subprocess
+    exit status.
+
+7.04  2016-08-28
+  - Added EXPERIMENTAL support for performing computationally expensive
+    operations in subprocesses, without blocking the event loop. (jberger, sri)
+  - Added EXPERIMENTAL module Mojo::IOLoop::Subprocess. (jberger, sri)
+  - Added EXPERIMENTAL subprocess method to Mojo::IOLoop. (jberger, sri)
+  - Improved many methods in Mojolicious::Controller to die more gracefully if
+    the connection has already been closed.
   - Fixed bug where Mojo::UserAgent would try to follow redirects for CONNECT
     requests.
 

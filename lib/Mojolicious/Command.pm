@@ -2,14 +2,11 @@ package Mojolicious::Command;
 use Mojo::Base -base;
 
 use Carp 'croak';
-use Cwd 'getcwd';
-use File::Basename 'dirname';
-use File::Path 'mkpath';
-use File::Spec::Functions qw(catdir catfile);
+use Mojo::File 'path';
 use Mojo::Loader 'data_section';
 use Mojo::Server;
 use Mojo::Template;
-use Mojo::Util qw(spurt unindent);
+use Mojo::Util qw(deprecated unindent);
 use Pod::Usage 'pod2usage';
 
 has app => sub { Mojo::Server->new->build_app('Mojo::HelloWorld') };
@@ -28,11 +25,11 @@ sub chmod_rel_file { $_[0]->chmod_file($_[0]->rel_file($_[1]), $_[2]) }
 sub create_dir {
   my ($self, $path) = @_;
   return $self->_loud("  [exist] $path") if -d $path;
-  mkpath $path or croak qq{Can't make directory "$path": $!};
+  path($path)->make_path;
   return $self->_loud("  [mkdir] $path");
 }
 
-sub create_rel_dir { $_[0]->create_dir($_[0]->rel_dir($_[1])) }
+sub create_rel_dir { $_[0]->create_dir($_[0]->rel_file($_[1])) }
 
 sub extract_usage {
   my $self = shift;
@@ -47,8 +44,14 @@ sub extract_usage {
 
 sub help { print shift->usage }
 
-sub rel_dir  { catdir getcwd(),  split('/', pop) }
-sub rel_file { catfile getcwd(), split('/', pop) }
+# DEPRECATED!
+sub rel_dir {
+  deprecated 'Mojolicious::Command::rel_dir is DEPRECATED'
+    . ' in favor of Mojolicious::Command::rel_file';
+  path->child(split('/', pop))->to_string;
+}
+
+sub rel_file { path->child(split('/', pop)) }
 
 sub render_data {
   my ($self, $name) = (shift, shift);
@@ -63,7 +66,7 @@ sub render_to_file {
 
 sub render_to_rel_file {
   my $self = shift;
-  $self->render_to_file(shift, $self->rel_dir(shift), @_);
+  $self->render_to_file(shift, $self->rel_file(shift), @_);
 }
 
 sub run { croak 'Method "run" not implemented by subclass' }
@@ -71,8 +74,8 @@ sub run { croak 'Method "run" not implemented by subclass' }
 sub write_file {
   my ($self, $path, $data) = @_;
   return $self->_loud("  [exist] $path") if -f $path;
-  $self->create_dir(dirname $path);
-  spurt $data, $path;
+  $self->create_dir(path($path)->dirname);
+  path($path)->spurt($data);
   return $self->_loud("  [write] $path");
 }
 
@@ -199,19 +202,11 @@ called from.
 
 Print usage information for command.
 
-=head2 rel_dir
-
-  my $path = $command->rel_dir('foo/bar');
-
-Portably generate an absolute path for a directory relative to the current
-working directory.
-
 =head2 rel_file
 
   my $path = $command->rel_file('foo/bar.txt');
 
-Portably generate an absolute path for a file relative to the current working
-directory.
+Return a L<Mojo::File> object relative to the current working directory.
 
 =head2 render_data
 

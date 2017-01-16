@@ -128,9 +128,9 @@ sub _connect_proxy {
       # CONNECT failed
       $old->previous($tx)->req->via_proxy(0);
       my $id = $tx->connection;
-      if ($tx->error || !$tx->res->is_status_class(200) || !$tx->keep_alive) {
+      if ($tx->error || !$tx->res->is_success || !$tx->keep_alive) {
         $old->res->error({message => 'Proxy connection failed'});
-        $self->_remove($id);
+        $self->_remove($id) if $id;
         return $self->$cb($old);
       }
 
@@ -241,9 +241,7 @@ sub _finish {
 
   # CONNECT requests always have a follow-up request
   $self->_reuse($id, $close) unless uc $old->req->method eq 'CONNECT';
-  if ($res->is_status_class(400) || $res->is_status_class(500)) {
-    $res->error({message => $res->message, code => $res->code});
-  }
+  $res->error({message => $res->message, code => $res->code}) if $res->is_error;
   $c->{cb}($self, $old) unless $self->_redirect($c, $old);
 }
 
@@ -344,14 +342,12 @@ Mojo::UserAgent - Non-blocking I/O HTTP and WebSocket user agent
   my $ua = Mojo::UserAgent->new;
   say $ua->get('www.☃.net?hello=there' => {Accept => '*/*'})->res->body;
 
-  # Form POST (application/x-www-form-urlencoded) with exception handling
-  my $tx = $ua->post('https://metacpan.org/search' => form => {q => 'mojo'});
-  if (my $res = $tx->success) { say $res->body }
-  else {
-    my $err = $tx->error;
-    die "$err->{code} response: $err->{message}" if $err->{code};
-    die "Connection error: $err->{message}";
-  }
+  # Fine grained response handling (dies on connection errors)
+  my $res = $ua->get('mojolicious.org/perldoc')->result;
+  if    ($res->is_success)  { say $res->body }
+  elsif ($res->is_error)    { say $res->message }
+  elsif ($res->code == 301) { say $res->headers->location }
+  else                      { say 'Whatever...' }
 
   # Extract data from HTML and XML resources with CSS selectors
   say $ua->get('www.perl.org')->res->dom->at('title')->text;
@@ -379,6 +375,15 @@ Mojo::UserAgent - Non-blocking I/O HTTP and WebSocket user agent
   $ua->max_redirects(5)
     ->get('https://www.github.com/kraih/mojo/tarball/master')
     ->res->content->asset->move_to('/home/sri/mojo.tar.gz');
+
+  # Form POST (application/x-www-form-urlencoded) with manual exception handling
+  my $tx = $ua->post('https://metacpan.org/search' => form => {q => 'mojo'});
+  if (my $res = $tx->success) { say $res->body }
+  else {
+    my $err = $tx->error;
+    die "$err->{code} response: $err->{message}" if $err->{code};
+    die "Connection error: $err->{message}";
+  }
 
   # Non-blocking request
   $ua->get('mojolicious.org' => sub {
@@ -429,7 +434,7 @@ For better scalability (epoll, kqueue) and to provide non-blocking name
 resolution, SOCKS5 as well as TLS support, the optional modules L<EV> (4.0+),
 L<Net::DNS::Native> (0.15+), L<IO::Socket::Socks> (0.64+) and
 L<IO::Socket::SSL> (1.94+) will be used automatically if possible. Individual
-features can also be disabled with the C<MOJO_NO_NDN>, C<MOJO_NO_SOCKS> and
+features can also be disabled with the C<MOJO_NO_NNR>, C<MOJO_NO_SOCKS> and
 C<MOJO_NO_TLS> environment variables.
 
 See L<Mojolicious::Guides::Cookbook/"USER AGENT"> for more.
@@ -642,7 +647,7 @@ implements the following new ones.
 
   my $tx = $ua->build_tx(GET => 'example.com');
   my $tx = $ua->build_tx(
-    PUT => 'http://example.com' => {Accept => '*/*'} => 'Hi!');
+    PUT => 'http://example.com' => {Accept => '*/*'} => 'Content!');
   my $tx = $ua->build_tx(
     PUT => 'http://example.com' => {Accept => '*/*'} => form => {a => 'b'});
   my $tx = $ua->build_tx(
@@ -697,7 +702,7 @@ L<Mojo::UserAgent::Transactor/"websocket">.
 =head2 delete
 
   my $tx = $ua->delete('example.com');
-  my $tx = $ua->delete('http://example.com' => {Accept => '*/*'} => 'Hi!');
+  my $tx = $ua->delete('http://example.com' => {Accept => '*/*'} => 'Content!');
   my $tx = $ua->delete(
     'http://example.com' => {Accept => '*/*'} => form => {a => 'b'});
   my $tx = $ua->delete(
@@ -717,7 +722,7 @@ implied). You can also append a callback to perform requests non-blocking.
 =head2 get
 
   my $tx = $ua->get('example.com');
-  my $tx = $ua->get('http://example.com' => {Accept => '*/*'} => 'Hi!');
+  my $tx = $ua->get('http://example.com' => {Accept => '*/*'} => 'Content!');
   my $tx = $ua->get(
     'http://example.com' => {Accept => '*/*'} => form => {a => 'b'});
   my $tx = $ua->get(
@@ -737,7 +742,7 @@ perform requests non-blocking.
 =head2 head
 
   my $tx = $ua->head('example.com');
-  my $tx = $ua->head('http://example.com' => {Accept => '*/*'} => 'Hi!');
+  my $tx = $ua->head('http://example.com' => {Accept => '*/*'} => 'Content!');
   my $tx = $ua->head(
     'http://example.com' => {Accept => '*/*'} => form => {a => 'b'});
   my $tx = $ua->head(
@@ -757,7 +762,7 @@ implied). You can also append a callback to perform requests non-blocking.
 =head2 options
 
   my $tx = $ua->options('example.com');
-  my $tx = $ua->options('http://example.com' => {Accept => '*/*'} => 'Hi!');
+  my $tx = $ua->options('http://example.com' => {Accept => '*/*'} => 'Content!');
   my $tx = $ua->options(
     'http://example.com' => {Accept => '*/*'} => form => {a => 'b'});
   my $tx = $ua->options(
@@ -777,7 +782,7 @@ implied). You can also append a callback to perform requests non-blocking.
 =head2 patch
 
   my $tx = $ua->patch('example.com');
-  my $tx = $ua->patch('http://example.com' => {Accept => '*/*'} => 'Hi!');
+  my $tx = $ua->patch('http://example.com' => {Accept => '*/*'} => 'Content!');
   my $tx = $ua->patch(
     'http://example.com' => {Accept => '*/*'} => form => {a => 'b'});
   my $tx = $ua->patch(
@@ -797,7 +802,7 @@ implied). You can also append a callback to perform requests non-blocking.
 =head2 post
 
   my $tx = $ua->post('example.com');
-  my $tx = $ua->post('http://example.com' => {Accept => '*/*'} => 'Hi!');
+  my $tx = $ua->post('http://example.com' => {Accept => '*/*'} => 'Content!');
   my $tx = $ua->post(
     'http://example.com' => {Accept => '*/*'} => form => {a => 'b'});
   my $tx = $ua->post(
@@ -817,7 +822,7 @@ implied). You can also append a callback to perform requests non-blocking.
 =head2 put
 
   my $tx = $ua->put('example.com');
-  my $tx = $ua->put('http://example.com' => {Accept => '*/*'} => 'Hi!');
+  my $tx = $ua->put('http://example.com' => {Accept => '*/*'} => 'Content!');
   my $tx = $ua->put(
     'http://example.com' => {Accept => '*/*'} => form => {a => 'b'});
   my $tx = $ua->put(

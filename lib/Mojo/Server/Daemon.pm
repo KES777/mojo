@@ -21,9 +21,15 @@ has max_requests => 100;
 sub DESTROY {
   return if Mojo::Util::_global_destruction();
   my $self = shift;
-  $self->_remove($_) for keys %{$self->{connections} || {}};
   my $loop = $self->ioloop;
-  $loop->remove($_) for @{$self->acceptors};
+  $loop->remove($_) for keys %{$self->{connections} || {}}, @{$self->acceptors};
+}
+
+sub close_idle_connections {
+  my $self = shift;
+  my $c    = $self->{connections};
+  my $loop = $self->ioloop;
+  !$c->{$_}{tx} and $c->{$_}{requests} and $loop->remove($_) for keys %$c;
 }
 
 sub run {
@@ -273,7 +279,7 @@ For better scalability (epoll, kqueue) and to provide non-blocking name
 resolution, SOCKS5 as well as TLS support, the optional modules L<EV> (4.0+),
 L<Net::DNS::Native> (0.15+), L<IO::Socket::Socks> (0.64+) and
 L<IO::Socket::SSL> (1.94+) will be used automatically if possible. Individual
-features can also be disabled with the C<MOJO_NO_NDN>, C<MOJO_NO_SOCKS> and
+features can also be disabled with the C<MOJO_NO_NNR>, C<MOJO_NO_SOCKS> and
 C<MOJO_NO_TLS> environment variables.
 
 See L<Mojolicious::Guides::Cookbook/"DEPLOYMENT"> for more.
@@ -455,6 +461,13 @@ Disable console messages.
 
 L<Mojo::Server::Daemon> inherits all methods from L<Mojo::Server> and
 implements the following new ones.
+
+=head2 close_idle_connections
+
+  $daemon->close_idle_connections;
+
+Close all connections without active requests. Note that this method is
+EXPERIMENTAL and might change without warning!
 
 =head2 run
 

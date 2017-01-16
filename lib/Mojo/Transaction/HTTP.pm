@@ -12,8 +12,7 @@ sub client_read {
   return unless $res->parse($chunk)->is_finished;
 
   # Unexpected 1xx response
-  return $self->completed
-    if !$res->is_status_class(100) || $res->headers->upgrade;
+  return $self->completed if !$res->is_info || $res->headers->upgrade;
   $self->res($res->new)->emit(unexpected => $res);
   return unless length(my $leftovers = $res->content->leftovers);
   $self->client_read($leftovers);
@@ -93,16 +92,13 @@ sub _headers {
 
   # Switch to body
   if ($self->{write} <= 0) {
-    $self->{offset} = 0;
+    @$self{qw(http_state offset)} = ('body', 0);
 
     # Response without body
-    if ($head && $self->is_empty) { $self->completed }
+    if ($head && $self->is_empty) { $self->completed->{http_state} = 'empty' }
 
     # Body
-    else {
-      $self->{http_state} = 'body';
-      $self->{write} = $msg->content->is_dynamic ? 1 : $msg->body_size;
-    }
+    else { $self->{write} = $msg->content->is_dynamic ? 1 : $msg->body_size }
   }
 
   return $buffer;

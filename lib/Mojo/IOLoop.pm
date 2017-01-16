@@ -8,6 +8,7 @@ use Mojo::IOLoop::Client;
 use Mojo::IOLoop::Delay;
 use Mojo::IOLoop::Server;
 use Mojo::IOLoop::Stream;
+use Mojo::IOLoop::Subprocess;
 use Mojo::Reactor::Poll;
 use Mojo::Util qw(md5_sum steady_time);
 use Scalar::Util qw(blessed weaken);
@@ -80,7 +81,11 @@ sub next_tick {
   return $self->reactor->next_tick(sub { $self->$cb });
 }
 
-sub one_tick { _instance(shift)->reactor->one_tick }
+sub one_tick {
+  my $self = _instance(shift);
+  croak 'Mojo::IOLoop already running' if $self->is_running;
+  $self->reactor->one_tick;
+}
 
 sub recurring { shift->_timer(recurring => @_) }
 
@@ -143,6 +148,12 @@ sub stream {
   return $self->_stream($stream => $self->_id) if ref $stream;
   my $c = $self->{in}{$stream} || $self->{out}{$stream} || {};
   return $c->{stream};
+}
+
+sub subprocess {
+  my $subprocess = Mojo::IOLoop::Subprocess->new;
+  weaken $subprocess->ioloop(_instance(shift))->{ioloop};
+  return $subprocess->run(@_);
 }
 
 sub timer { shift->_timer(timer => @_) }
@@ -293,7 +304,7 @@ For better scalability (epoll, kqueue) and to provide non-blocking name
 resolution, SOCKS5 as well as TLS support, the optional modules L<EV> (4.0+),
 L<Net::DNS::Native> (0.15+), L<IO::Socket::Socks> (0.64+) and
 L<IO::Socket::SSL> (1.94+) will be used automatically if possible. Individual
-features can also be disabled with the C<MOJO_NO_NDN>, C<MOJO_NO_SOCKS> and
+features can also be disabled with the C<MOJO_NO_NNR>, C<MOJO_NO_SOCKS> and
 C<MOJO_NO_TLS> environment variables.
 
 See L<Mojolicious::Guides::Cookbook/"REAL-TIME WEB"> for more.
@@ -326,7 +337,8 @@ The maximum number of connections this event loop is allowed to accept, before
 shutting down gracefully without interrupting existing connections, defaults to
 C<0>. Setting the value to C<0> will allow this event loop to accept new
 connections indefinitely. Note that up to half of this value can be subtracted
-randomly to improve load balancing between multiple server processes.
+randomly to improve load balancing between multiple server processes, and to
+make sure that not all of them restart at the same time.
 
 =head2 max_connections
 
@@ -475,8 +487,7 @@ callbacks that have been registered with this method, always returns C<undef>.
   Mojo::IOLoop->one_tick;
   $loop->one_tick;
 
-Run event loop until an event occurs. Note that this method can recurse back
-into the reactor, so you need to be careful.
+Run event loop until an event occurs.
 
   # Don't block longer than 0.5 seconds
   my $id = Mojo::IOLoop->timer(0.5 => sub {});
@@ -594,6 +605,29 @@ Get L<Mojo::IOLoop::Stream> object for id or turn object into a connection.
 
   # Increase inactivity timeout for connection to 300 seconds
   Mojo::IOLoop->stream($id)->timeout(300);
+
+=head2 subprocess
+
+  my $subprocess = Mojo::IOLoop->subprocess(sub {...}, sub {...});
+  my $subprocess = $loop->subprocess(sub {...}, sub {...});
+
+Build L<Mojo::IOLoop::Subprocess> object to perform computationally expensive
+operations in subprocesses, without blocking the event loop. Callbacks will be
+passed along to L<Mojo::IOLoop::Subprocess/"run">.
+
+  # Operation that would block the event loop for 5 seconds
+  Mojo::IOLoop->subprocess(
+    sub {
+      my $subprocess = shift;
+      sleep 5;
+      return '♥', 'Mojolicious';
+    },
+    sub {
+      my ($subprocess, $err, @results) = @_;
+      say "Subprocess error: $err" and return if $err;
+      say "I $results[0] $results[1]!";
+    }
+  );
 
 =head2 timer
 

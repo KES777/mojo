@@ -6,12 +6,12 @@ BEGIN {
 }
 
 use Test::More;
-use Mojo::IOLoop::Server;
+use Mojo::IOLoop::TLS;
 
 plan skip_all => 'set TEST_ONLINE to enable this test (developer only!)'
   unless $ENV{TEST_ONLINE};
 plan skip_all => 'IO::Socket::SSL 1.94+ required for this test!'
-  unless Mojo::IOLoop::Server::TLS;
+  unless Mojo::IOLoop::TLS->can_tls;
 
 use IO::Socket::INET;
 use Mojo::IOLoop;
@@ -188,14 +188,6 @@ $tx = $ua->get('https://metacpan.org');
 is $tx->req->method, 'GET',                  'right method';
 is $tx->req->url,    'https://metacpan.org', 'right url';
 is $tx->res->code,   200,                    'right status';
-
-# HTTPS request that requires SNI
-SKIP: {
-  skip 'SNI support required!', 1 unless IO::Socket::SSL->can_client_sni;
-  $tx = $ua->get('https://cpanmin.us');
-  is $tx->res->code, 302, 'right status';
-  like $tx->res->headers->location, qr/github/, 'right "Location" header';
-}
 
 # Fresh user agent again
 $ua = Mojo::UserAgent->new;
