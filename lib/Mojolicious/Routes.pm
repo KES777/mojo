@@ -70,6 +70,9 @@ sub match {
   # Check cache
   my $ws = $c->tx->is_websocket ? 1 : 0;
   my $match = Mojolicious::Routes::Match->new(root => $self);
+  my $captures =  $c->stash->{ 'mojo.captures' };
+  delete @$captures{qw(app cb)};
+  $match->{ captures } =  $captures;
   $c->match($match);
   my $cache = $self->cache;
   if (my $result = $cache->get("$method:$path:$ws")) {
