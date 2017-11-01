@@ -89,6 +89,8 @@ sub _match {
     return 1 if $self->_match($child, $c, $options);
     $self->stack([@{$snapshot[0]}])->{captures} = $snapshot[1];
   }
+
+  return 0;
 }
 
 1;

@@ -40,8 +40,7 @@ sub continue {
 
 sub dispatch {
   my ($self, $c) = @_;
-  $self->match($c);
-  @{$c->match->stack} ? $self->continue($c) : return undef;
+  $self->match($c) ? $self->continue($c) : return undef;
   return 1;
 }
 
@@ -78,10 +77,10 @@ sub match {
   }
 
   # Check routes
-  $match->find($c => {method => $method, path => $path, websocket => $ws});
-  return unless my $route = $match->endpoint;
+  $match->find($c => {method => $method, path => $path, websocket => $ws})
+     or return;
   $cache->set(
-    "$method:$path:$ws" => {endpoint => $route, stack => $match->stack});
+    "$method:$path:$ws" => {endpoint => $match->endpoint, stack => $match->stack});
 }
 
 sub _action { shift->plugins->emit_chain(around_action => @_) }
