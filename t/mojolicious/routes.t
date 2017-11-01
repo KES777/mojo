@@ -211,11 +211,13 @@ $r->route('/partial')->detour('foo#bar');
 
 # GET   /similar/*
 # PATCH /similar/too
-# PUT   /similar/foo
+# PATCH /similar/foo
+# PUT   /similar/bar
 my $similar = $r->route('/similar')->via(qw(DELETE GET PATCH))->inline(1);
 $similar->route('/:something')->via('GET')->to('similar#get');
 $similar->route('/too')->via('PATCH')->to('similar#post');
-$similar->route('/foo')->via('PUT')->to('similar#put');
+$similar->route('/foo')->via('HEAD','PATCH')->to('similar#post')->name( 'sort_out' );
+$similar->route('/bar')->via('PUT')->to('similar#post');
 
 # /custom_pattern/test_*_test
 my $custom = $r->get->to(four => 4);
@@ -937,12 +939,14 @@ is_deeply $m->stack, [{}, {controller => 'similar', action => 'post'}],
   'right structure';
 is $m->endpoint->suggested_method, 'PATCH', 'right method';
 $m = Mojolicious::Routes::Match->new(root => $r);
-$m->find($c => {method => 'PUT', path => '/similar/foo'});
-is_deeply $m->stack, [],  'stack is empty';
-is $m->endpoint, undef, 'no such endpoint';
-$m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'DELETE', path => '/similar/too'});
 is_deeply $m->stack, [], 'empty stack';
+$m = Mojolicious::Routes::Match->new(root => $r);
+$m->find($c => {method => 'PUT', path => '/similar/bar'});
+is_deeply $m->stack, [],  'stack is empty';
+is $m->endpoint, undef, 'no such endpoint';
+is $r->lookup( 'sort_out' )->suggested_method, 'PATCH', 'right_method';
+
 
 # Custom pattern
 $m = Mojolicious::Routes::Match->new(root => $r);

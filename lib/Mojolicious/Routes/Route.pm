@@ -114,10 +114,9 @@ sub suggested_method {
   my $self = shift;
 
   my %via;
-  for my $route (reverse @{$self->_chain}) {
+  for my $route (@{$self->_chain}) {
     next unless my @via = @{$route->via || []};
-    %via = map { $_ => 1 }  @via;
-    last;
+    %via = map { $_ => 1 } keys %via ? grep { $via{$_} } @via : @via;
   }
 
   return 'POST' if $via{POST} && !$via{GET};
