@@ -23,7 +23,7 @@ sub continue {
   my $match    = $c->match;
   my $stack    = $match->stack;
   my $position = $match->position;
-  return _render($c) unless my $field = $stack->[$position];
+  my $field    = $stack->[$position];
 
   # Merge captures into stash
   my $stash = $c->stash;
@@ -34,8 +34,10 @@ sub continue {
   my $last = !$stack->[++$position];
   if (my $cb = $field->{cb}) { $continue = $self->_callback($c, $cb, $last) }
   else { $continue = $self->_controller($c, $field, $last) }
+  return _render( $c ) if $last;
+
   $match->position($position);
-  $self->continue($c) if $last || $continue;
+  $self->continue($c) if $continue;
 }
 
 sub dispatch {
