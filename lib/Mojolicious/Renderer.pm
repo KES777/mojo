@@ -164,6 +164,7 @@ sub template_name {
       if @$handlers && !defined $handler || grep { $_ eq $handler } @$handlers;
   }
 
+  $template =~ s#/(?=/)##g;
   return defined $handler ? "$template.$handler" : $template;
 }
 
