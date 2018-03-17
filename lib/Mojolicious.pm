@@ -121,9 +121,11 @@ sub dispatch {
   $self->static->dispatch($c) and $plugins->emit_hook(after_static => $c)
     unless $tx->res->code;
 
+  return if $tx->res->code;
+
   # Start timer (ignore static files)
   my $stash = $c->stash;
-  unless ($stash->{'mojo.static'} || $stash->{'mojo.started'}) {
+  unless ($stash->{'mojo.started'}) {
     my $req    = $c->req;
     my $method = $req->method;
     my $path   = $req->url->path->to_abs_string;
