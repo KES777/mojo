@@ -46,6 +46,8 @@ get '/bye' => sub {
   $nb .= 'success!';
 };
 
+app->routes->cache->max_keys( 0 );
+
 package MyTestApp::Test2;
 use Mojolicious::Lite;
 
