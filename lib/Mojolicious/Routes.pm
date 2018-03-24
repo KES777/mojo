@@ -74,6 +74,7 @@ sub match {
   $c->match($match);
   my $cache = $self->cache;
   if (my $result = $cache->get("$method:$path:$ws")) {
+    $match->{cn} =  $result->{cn};
     return $match->endpoint($result->{endpoint})->stack($result->{stack});
   }
 
@@ -81,7 +82,7 @@ sub match {
   $match->find($c => {method => $method, path => $path, websocket => $ws});
   return unless my $route = $match->endpoint;
   $cache->set(
-    "$method:$path:$ws" => {endpoint => $route, stack => $match->stack});
+    "$method:$path:$ws" => {endpoint => $route, stack => $match->stack, cn => $match->{cn}});
 }
 
 sub _action { shift->plugins->emit_chain(around_action => @_) }

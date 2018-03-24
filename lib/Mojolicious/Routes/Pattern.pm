@@ -26,10 +26,17 @@ sub match_partial {
   $$pathref = ${^POSTMATCH};
   @captures = () if $#+ == 0;
   my $captures = {%{$self->defaults}};
-  for my $placeholder (@{$self->placeholders}, 'format') {
-    last unless @captures;
+  for my $placeholder (@{$self->placeholders}) {
     my $capture = shift @captures;
     $captures->{$placeholder} = $capture if defined $capture;
+  }
+
+  if( defined $captures->{ format } ) {
+    $captures->{ _sformat } =  $captures->{ format };
+  }
+
+  if( defined( my $capture = shift @captures ) ) {
+    $captures->{ format } = $captures->{ _cformat } = $capture;
   }
 
   return $captures;
