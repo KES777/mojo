@@ -110,7 +110,7 @@ get '/auto_name' => sub {
 
 get '/query_string' => sub {
   my $c = shift;
-  $c->render(text => $c->req->url->query);
+  $c->render(text => $c->req->url->query->to_string);
 };
 
 get '/reserved' => sub {
