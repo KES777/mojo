@@ -222,20 +222,15 @@ sub res { (shift->tx || Carp::croak 'Connection already closed')->res }
 sub respond_to {
   my ($self, $args) = (shift, ref $_[0] ? $_[0] : {@_});
 
+  # Detect format
+  my $renderer = $self->app->renderer;
+  my $format = $self->format( $renderer->default_format, keys %$args );
+  $self->stash->{format} = $format;
+
   # Find target
   my $target;
-  my $renderer = $self->app->renderer;
-  my @formats  = @{$renderer->accepts($self)};
-  for my $format (@formats ? @formats : ($renderer->default_format)) {
-    next unless $target = $args->{$format};
-    $self->stash->{format} = $format;
-    last;
-  }
-
-  # Fallback
-  unless ($target) {
+  unless ($target = $args->{$format}) {
     return $self->rendered(204) unless $target = $args->{any};
-    delete $self->stash->{format};
   }
 
   # Dispatch

@@ -6,7 +6,7 @@ use Mojo::File 'path';
 use Mojo::JSON 'encode_json';
 use Mojo::Home;
 use Mojo::Loader 'data_section';
-use Mojo::Util qw(decamelize encode md5_sum monkey_patch);
+use Mojo::Util qw(decamelize encode md5_sum monkey_patch deprecated);
 
 has cache   => sub { Mojo::Cache->new };
 has classes => sub { ['main'] };
@@ -22,12 +22,17 @@ my $TEMPLATES = Mojo::Home->new->mojo_lib_dir->child('Mojolicious', 'resources',
 
 sub DESTROY { Mojo::Util::_teardown($_) for @{shift->{namespaces}} }
 
+
+# DEPRECATED
 sub accepts {
+  deprecated 'Mojolicious::Renderer::accept is DEPRECATED in favor of '
+    .'Mojolicious::Renderer::format';
+
   my ($self, $c) = (shift, shift);
 
   # List representations
   my $req  = $c->req;
-  my $fmt  = $req->param('format') || $c->stash->{format};
+  my $fmt  = $req->param('format') || $c->stash->{format} || $c->match->{cn}[0];
   my @exts = $fmt ? ($fmt) : ();
   push @exts, @{$c->app->types->detect($req->headers->accept)};
   return \@exts unless @_;
@@ -35,6 +40,29 @@ sub accepts {
   # Find best representation
   for my $ext (@exts) { $ext eq $_ and return $ext for @_ }
   return @exts ? undef : shift;
+}
+
+sub format {
+  my( $self, $c, @cap ) =  @_;
+
+  my $stash =  $c->stash;
+  return $stash->{format}  if defined $stash->{format};
+
+  # Capabilities and requirements
+  my $cn  =  $c->match  &&  $c->match->{cn};
+  @cap =  ref $cn->[1] eq 'ARRAY' ? @{ $cn->[1] } : $cn->[1] // () unless @cap;
+
+  my $req =  $c->req;
+  my $fmt =  $cn->[0] || $req->param('format');
+  my @req =  $fmt ? ($fmt) : ();
+  push @req, @{$c->app->types->detect($req->headers->accept)};
+
+  # Find best representation
+  for my $ext (@req) { $ext eq $_ and return $ext for @cap }
+
+  return @req ?
+    (@cap ? ''      : $req[0] ):
+    (@cap ? $cap[0] : $self->default_format );
 }
 
 sub add_handler { $_[0]->handlers->{$_[1]} = $_[2] and return $_[0] }
@@ -93,7 +121,7 @@ sub render {
   };
   my $inline = $options->{inline} = delete $stash->{inline};
   $options->{handler} //= $self->default_handler if defined $inline;
-  $options->{format} = $stash->{format} || $self->default_format;
+  $options->{format} = $self->format( $c ) || $self->default_format;
 
   # Data
   return delete $stash->{data}, $options->{format} if defined $stash->{data};
@@ -115,7 +143,7 @@ sub render {
     if $stash->{extends} || $stash->{layout};
   while ((my $next = _next($stash)) && !defined $inline) {
     @$options{qw(handler template)} = ($stash->{handler}, $next);
-    $options->{format} = $stash->{format} || $self->default_format;
+    $options->{format} = $self->format( $c ) || $self->default_format;
     if ($self->_render_template($c, \my $tmp, $options)) { $output = $tmp }
     $content->{content} //= $output if $output =~ /\S/;
   }

@@ -25,6 +25,9 @@ sub continue {
   my $position = $match->position;
   return _render($c) unless my $field = $stack->[$position];
 
+  # The format is negotiation process
+  delete $field->{format};
+
   # Merge captures into stash
   my $stash = $c->stash;
   @{$stash->{'mojo.captures'} //= {}}{keys %$field} = values %$field;

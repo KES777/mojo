@@ -85,12 +85,12 @@ get '/optional/:param' =>
 
 get '/alterformat' => [format => ['json']] => {format => 'json'} => sub {
   my $c = shift;
-  $c->render(text => $c->stash('format'));
+  $c->render(text => $c->format);
 };
 
 get '/noformat' => [format => 0] => {format => 'xml'} => sub {
   my $c = shift;
-  $c->render(text => $c->stash('format') . $c->url_for);
+  $c->render(text => $c->format . $c->url_for);
 };
 
 del sub { shift->render(text => 'Hello!') };
