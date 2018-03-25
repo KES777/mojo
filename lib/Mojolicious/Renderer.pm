@@ -73,8 +73,10 @@ sub get_helper {
 sub render {
   my ($self, $c, $args) = @_;
 
+  my $stash =  delete local $c->{stash};
+  $stash = $c->stash( %$stash )->stash;
+
   # Localize "extends" and "layout" to allow argument overrides
-  my $stash = $c->stash;
   local $stash->{layout}  = $stash->{layout}  if exists $stash->{layout};
   local $stash->{extends} = $stash->{extends} if exists $stash->{extends};
 
