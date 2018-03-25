@@ -91,6 +91,7 @@ sub build_controller {
   # Build default controller
   my $defaults = $self->defaults;
   @$stash{keys %$defaults} = values %$defaults;
+  delete $stash->{format};
   my $c
     = $self->controller_class->new(app => $self, stash => $stash, tx => $tx);
   Scalar::Util::weaken $c->{app};
