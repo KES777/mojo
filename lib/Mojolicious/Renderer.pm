@@ -60,7 +60,7 @@ sub format {
   # Find best representation
   for my $ext (@req) { $ext eq $_ and return $ext for @cap }
 
-  return @req ?
+  return $stash->{format} =  @req ?
     (@cap ? ''      : $req[0] ):
     (@cap ? $cap[0] : $self->default_format );
 }
