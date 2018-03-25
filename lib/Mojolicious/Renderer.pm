@@ -406,6 +406,28 @@ C<undef> if no helper or prefix could be found. Generated helpers return a
 proxy object containing the current controller object and on which nested
 helpers can be called.
 
+=head2 format
+
+  my $all  = $renderer->format(Mojolicious::Controller->new);
+  my $best = $renderer->format(Mojolicious::Controller->new, 'html', 'json');
+
+Select best possible representation for L<Mojolicious::Controller> object from
+C<format> stash value, C<format> C<GET>/C<POST> parameter, C<Accept> request
+header, supported C<format> for route or application. If no preference
+could be detected it will return one of next results:
+
+If C<format> is requested and route or application defines supported C<format>
+then empty string is returned
+
+If C<format> is requested and route or application does not define
+suported C<format>s then fallback to first requested C<format>
+
+If C<format> is not requested and route or application defines supported
+C<format> then fallback to first supported C<format>
+
+If C<format> is not requested and route or application does not define
+suported C<format>s fallback to renderer's default C<format>
+
 =head2 render
 
   my ($output, $format) = $renderer->render(Mojolicious::Controller->new, {
