@@ -22,7 +22,6 @@ sub register {
     $app->helper($name => sub { shift->stash($name, @_) });
   }
 
-  $app->helper(format  => sub { $_[0]->app->renderer->format(@_) });
   $app->helper(accepts => sub { $_[0]->app->renderer->accepts(@_) });
   $app->helper(b       => sub { shift; Mojo::ByteStream->new(@_) });
   $app->helper(c       => sub { shift; Mojo::Collection->new(@_) });
@@ -103,12 +102,14 @@ sub _development {
   my %snapshot = map { $_ => $stash->{$_} }
     grep { !/^mojo\./ and defined $stash->{$_} } keys %$stash;
 
+  $app->plugins->emit_chain(around_action => $c, sub{}, 1);
+
   # Render with fallbacks
   my $mode     = $app->mode;
   my $renderer = $app->renderer;
   my $options  = {
     exception => $page eq 'exception' ? $e : undef,
-    format    => scalar $c->format,
+    format    => $stash->{format} || $renderer->default_format,
     handler   => undef,
     snapshot  => \%snapshot,
     status    => $page eq 'exception' ? 500 : 404,

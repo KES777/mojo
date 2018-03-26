@@ -384,7 +384,7 @@ is_deeply $m->stack, [{foo => 'one', bar => 'two'}], 'right structure';
 is $m->path_for->{path}, '/optional2', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/optional2.txt'});
-is_deeply $m->stack, [{foo => 'one', bar => 'two', format => 'txt'}],
+is_deeply $m->stack, [{foo => 'one', bar => 'two', format => 'txt', _cformat => 'txt'}],
   'right structure';
 is $m->path_for->{path}, '/optional2', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
@@ -397,7 +397,7 @@ is_deeply $m->stack, [{foo => 'three', bar => 'four'}], 'right structure';
 is $m->path_for->{path}, '/optional2/three/four', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/optional2/three/four.txt'});
-is_deeply $m->stack, [{foo => 'three', bar => 'four', format => 'txt'}],
+is_deeply $m->stack, [{foo => 'three', bar => 'four', format => 'txt', _cformat => 'txt'}],
   'right structure';
 is $m->path_for->{path}, '/optional2/three/four', 'right path';
 
@@ -405,8 +405,8 @@ is $m->path_for->{path}, '/optional2/three/four', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/articles/1/edit'});
 my @stack = (
-  {controller => 'articles', action => 'load', id => 1, format => 'html'},
-  {controller => 'articles', action => 'edit', id => 1, format => 'html'}
+  {controller => 'articles', action => 'load', id => 1, format => 'html', _sformat => 'html'},
+  {controller => 'articles', action => 'edit', id => 1, format => 'html', _sformat => 'html'}
 );
 is_deeply $m->stack, \@stack, 'right structure';
 is $m->path_for->{path}, '/articles/1/edit', 'right path';
@@ -420,16 +420,17 @@ is $m->path_for('articles_delete', id => 12)->{path}, '/articles/12/delete',
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/articles/1/delete'});
 @stack = (
-  {controller => 'articles', action => 'load',   id => 1, format => 'html'},
-  {controller => 'articles', action => 'delete', id => 1, format => undef}
+  {controller => 'articles', action => 'load',   id => 1, format => 'html', _sformat => 'html'},
+  {controller => 'articles', action => 'delete', id => 1, format => undef, _sformat => 'html'}
 );
 is_deeply $m->stack, \@stack, 'right structure';
 is $m->path_for->{path}, '/articles/1/delete', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/articles/1/delete.json'});
 @stack = (
-  {controller => 'articles', action => 'load',   id => 1, format => 'json'},
-  {controller => 'articles', action => 'delete', id => 1, format => 'json'}
+  {controller => 'articles', action => 'load',   id => 1, format => 'json', _sformat => 'html'},
+  {controller => 'articles', action => 'delete', id => 1, format => 'json',
+  _sformat => 'html', _cformat => 'json'}
 );
 is_deeply $m->stack, \@stack, 'right structure';
 is $m->path_for->{path}, '/articles/1/delete', 'right path';
@@ -552,7 +553,7 @@ is $m->path_for->{path}, '/wildcards/1/%foo%bar%', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/format'});
 is_deeply $m->stack,
-  [{controller => 'hello', action => 'you', format => 'html'}],
+  [{controller => 'hello', action => 'you', format => 'html', _sformat => 'html'}],
   'right structure';
 is $m->path_for->{path}, '/format', 'right path';
 is $m->path_for(format => undef)->{path},  '/format',      'right path';
@@ -561,7 +562,7 @@ is $m->path_for(format => 'txt')->{path},  '/format.txt',  'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/format.html'});
 is_deeply $m->stack,
-  [{controller => 'hello', action => 'you', format => 'html'}],
+  [{controller => 'hello', action => 'you', format => 'html', _sformat => 'html', _cformat => 'html'}],
   'right structure';
 is $m->path_for->{path}, '/format', 'right path';
 is $m->path_for(format => undef)->{path},  '/format',      'right path';
@@ -574,7 +575,7 @@ $m->find($c => {method => 'GET', path => '/format2'});
 is_deeply $m->stack, [], 'empty stack';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/format2.txt'});
-is_deeply $m->stack, [{controller => 'we', action => 'howdy', format => 'txt'}],
+is_deeply $m->stack, [{controller => 'we', action => 'howdy', format => 'txt', _cformat => 'txt'}],
   'right structure';
 is $m->path_for->{path}, '/format2.txt', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
@@ -593,13 +594,13 @@ is_deeply $m->stack, [], 'empty stack';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/format3.txt'});
 is_deeply $m->stack,
-  [{controller => 'we', action => 'cheers', format => 'txt'}],
+  [{controller => 'we', action => 'cheers', format => 'txt', _cformat => 'txt'}],
   'right structure';
 is $m->path_for->{path}, '/format3.txt', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/format3.text'});
 is_deeply $m->stack,
-  [{controller => 'we', action => 'cheers', format => 'text'}],
+  [{controller => 'we', action => 'cheers', format => 'text', _cformat => 'text'}],
   'right structure';
 is $m->path_for->{path}, '/format3.text', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
@@ -612,12 +613,12 @@ is_deeply $m->stack, [], 'empty stack';
 # Format with constraint and default
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/format4'});
-is_deeply $m->stack, [{controller => 'us', action => 'yay', format => 'html'}],
+is_deeply $m->stack, [{controller => 'us', action => 'yay', format => 'html', _sformat => 'html'}],
   'right structure';
 is $m->path_for->{path}, '/format4.html', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/format4.html'});
-is_deeply $m->stack, [{controller => 'us', action => 'yay', format => 'html'}],
+is_deeply $m->stack, [{controller => 'us', action => 'yay', format => 'html', _cformat => 'html', _sformat => 'html'}],
   'right structure';
 is $m->path_for->{path}, '/format4.html', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
@@ -639,7 +640,7 @@ is_deeply $m->stack, [], 'empty stack';
 # Forbidden format and default
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/format6'});
-is_deeply $m->stack, [{controller => 'us', action => 'doh', format => 'xml'}],
+is_deeply $m->stack, [{controller => 'us', action => 'doh', format => 'xml', _sformat => 'xml'}],
   'right structure';
 is $m->path_for->{path}, '/format6', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
@@ -650,13 +651,13 @@ is_deeply $m->stack, [], 'empty stack';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/format7.foo'});
 is_deeply $m->stack,
-  [{controller => 'perl', action => 'rocks', format => 'foo'}],
+  [{controller => 'perl', action => 'rocks', format => 'foo', _cformat => 'foo'}],
   'right structure';
 is $m->path_for->{path}, '/format7.foo', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/format7.foobar'});
 is_deeply $m->stack,
-  [{controller => 'perl', action => 'rocks', format => 'foobar'}],
+  [{controller => 'perl', action => 'rocks', format => 'foobar', _cformat => 'foobar'}],
   'right structure';
 is $m->path_for->{path}, '/format7.foobar', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
@@ -667,7 +668,7 @@ is_deeply $m->stack, [], 'empty stack';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/method/get.html'});
 is_deeply $m->stack,
-  [{controller => 'method', action => 'get', format => 'html'}],
+  [{controller => 'method', action => 'get', format => 'html', _cformat => 'html'}],
   'right structure';
 is $m->path_for->{path}, '/method/get', 'right path';
 is $m->endpoint->suggested_method, 'GET', 'right method';
@@ -739,7 +740,7 @@ is_deeply $m->stack, [{controller => 'bar', action => 'baz'}],
 is $m->path_for->{path}, '/versioned/1.0/test', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/versioned/1.0/test.xml'});
-is_deeply $m->stack, [{controller => 'bar', action => 'baz', format => 'xml'}],
+is_deeply $m->stack, [{controller => 'bar', action => 'baz', format => 'xml', _cformat => 'xml'}],
   'right structure';
 is $m->path_for->{path}, '/versioned/1.0/test', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
@@ -749,7 +750,7 @@ is_deeply $m->stack, [{controller => 'foo', action => 'bar'}],
 is $m->path_for->{path}, '/versioned/2.4/test', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/versioned/2.4/test.xml'});
-is_deeply $m->stack, [{controller => 'foo', action => 'bar', format => 'xml'}],
+is_deeply $m->stack, [{controller => 'foo', action => 'bar', format => 'xml', _cformat => 'xml'}],
   'right structure';
 is $m->path_for->{path}, '/versioned/2.4/test', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
@@ -786,7 +787,7 @@ is_deeply $m->stack, [], 'empty stack';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/multi/bar.baz'});
 is_deeply $m->stack,
-  [{controller => 'works', action => 'too', format => 'xml'}],
+  [{controller => 'works', action => 'too', format => 'xml', _sformat => 'xml'}],
   'right structure';
 is $m->path_for->{path}, '/multi/bar.baz', 'right path';
 
@@ -802,13 +803,13 @@ is_deeply $m->stack, [], 'empty stack';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/nodetect2.txt'});
 is_deeply $m->stack,
-  [{controller => 'bar', action => 'hyper', format => 'txt'}],
+  [{controller => 'bar', action => 'hyper', format => 'txt', , _cformat => 'txt'}],
   'right structure';
 is $m->path_for->{path}, '/nodetect2.txt', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/nodetect2.html'});
 is_deeply $m->stack,
-  [{controller => 'bar', action => 'hyper', format => 'html'}],
+  [{controller => 'bar', action => 'hyper', format => 'html', _cformat => 'html'}],
   'right structure';
 is $m->path_for->{path}, '/nodetect2.html', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
@@ -838,7 +839,7 @@ is $m->path_for->{path}, '/target/second', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/target/second.xml'});
 is_deeply $m->stack,
-  [{controller => 'target', action => 'second', format => 'xml'}],
+  [{controller => 'target', action => 'second', format => 'xml', _cformat => 'xml'}],
   'right structure';
 is $m->path_for->{path}, '/target/second', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
@@ -852,7 +853,7 @@ is $m->path_for->{path}, '/source/third', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/source/third.xml'});
 is_deeply $m->stack,
-  [{controller => 'source', action => 'third', format => 'xml'}],
+  [{controller => 'source', action => 'third', format => 'xml', _cformat => 'xml'}],
   'right structure';
 is $m->path_for->{path}, '/source/third', 'right path';
 $m = Mojolicious::Routes::Match->new(root => $r);
@@ -873,7 +874,7 @@ ok $m->path_for->{websocket}, 'is a websocket';
 $m = Mojolicious::Routes::Match->new(root => $r);
 $m->find($c => {method => 'GET', path => '/slash.txt'});
 is_deeply $m->stack,
-  [{controller => 'just', action => 'slash', format => 'txt'}],
+  [{controller => 'just', action => 'slash', format => 'txt', _cformat => 'txt'}],
   'right structure';
 is $m->path_for->{path}, '/slash', 'right path';
 ok !$m->path_for->{websocket}, 'not a websocket';

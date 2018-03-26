@@ -9,7 +9,6 @@ my $app = Mojolicious->new(secrets => ['works']);
 my $c = $app->build_controller;
 $c->app->log->level('fatal');
 is $c->render_to_string(text => 'works'), 'works', 'renderer is working';
-delete $c->stash->{format}; # Reset stash after test
 
 # Normal rendering with default format
 my $renderer = $c->app->renderer->default_format('test');

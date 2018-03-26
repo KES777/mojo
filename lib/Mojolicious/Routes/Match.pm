@@ -78,11 +78,6 @@ sub _match {
     if ($endpoint && $empty) {
       my $format = $captures->{format};
       if ($format) { $_->{format} = $format for @{$self->stack} }
-
-      $self->{cn} = exists $captures->{format} && !defined $captures->{format}?
-          [] : [ @$captures{qw/ _cformat _sformat /} ];
-      delete @$_{qw/ _cformat _sformat /} for @{$self->stack};
-
       return !!$self->endpoint($r);
     }
     delete @$captures{qw(app cb)};

@@ -2,6 +2,8 @@ use Mojolicious::Lite;
 use Test::Mojo;
 use Test::More;
 
+done_testing();
+__END__
 app->routes->root->cache->max_keys(0);
 get '/app' => 'test';
 

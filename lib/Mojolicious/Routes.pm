@@ -25,9 +25,6 @@ sub continue {
   my $position = $match->position;
   return _render($c) unless my $field = $stack->[$position];
 
-  # The format is negotiation process
-  delete $field->{format};
-
   # Merge captures into stash
   my $stash = $c->stash;
   @{$stash->{'mojo.captures'} //= {}}{keys %$field} = values %$field;
@@ -77,17 +74,14 @@ sub match {
   $c->match($match);
   my $cache = $self->cache;
   if (my $result = $cache->get("$method:$path:$ws")) {
-    $match->{cn} =  $result->{cn};
     return $match->endpoint($result->{endpoint})->stack($result->{stack});
   }
 
   # Check routes
   $match->find($c => {method => $method, path => $path, websocket => $ws});
   return unless my $route = $match->endpoint;
-
-  $match->{cn}[1] //=  $c->app->defaults->{format};
   $cache->set(
-    "$method:$path:$ws" => {endpoint => $route, stack => $match->stack, cn => $match->{cn}});
+    "$method:$path:$ws" => {endpoint => $route, stack => $match->stack});
 }
 
 sub _action { shift->plugins->emit_chain(around_action => @_) }
