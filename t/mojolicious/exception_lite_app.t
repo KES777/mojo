@@ -167,9 +167,8 @@ like $log, qr/dead template with layout!/, 'right result';
 
 # Dead action
 $t->get_ok('/dead_action')->status_is(500)
-  ->content_type_is('text/html;charset=UTF-8')
-  ->content_like(qr!get &#39;/dead_action&#39;!)
-  ->content_like(qr/dead action!/)->text_is('#error' => "dead action!\n");
+  ->content_type_is('text/plain;charset=UTF-8')
+  ->content_is("dead action!\n");
 like $log, qr/dead action!/, 'right result';
 
 # Dead action with different format
@@ -188,7 +187,7 @@ $t->get_ok('/dead_action' => {Accept => 'text/plain'})->status_is(500)
 
 # Action dies twice
 $t->get_ok('/double_dead_action_☃')->status_is(500)
-  ->content_like(qr!get &#39;/double_dead_action_☃&#39;.*lite_app\.t:\d!s)
+  ->content_type_is('text/plain;charset=UTF-8')
   ->content_like(qr/double dead action!/);
 
 # Trapped exception
@@ -230,8 +229,8 @@ $t->get_ok('/missing_template/too')->status_is(404)
 
 # Missing helper (correct context)
 $t->get_ok('/missing_helper')->status_is(500)
-  ->content_type_is('text/html;charset=UTF-8')->content_like(qr/Server error/)
-  ->content_like(qr/shift-&gt;missing_helper/);
+  ->content_type_is('text/plain;charset=UTF-8')
+  ->content_like(qr/missing_helper/);
 
 # Reuse exception
 ok !$exception, 'no exception';

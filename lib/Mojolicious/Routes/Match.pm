@@ -75,16 +75,7 @@ sub _match {
   # Endpoint (or intermediate destination)
   if (($endpoint && $empty) || $r->inline) {
     push @{$self->stack}, {%$captures};
-    if ($endpoint && $empty) {
-      my $format = $captures->{format};
-      if ($format) { $_->{format} = $format for @{$self->stack} }
-
-      $self->{cn} = exists $captures->{format} && !defined $captures->{format}?
-          [] : [ @$captures{qw/ _cformat _sformat /} ];
-      delete @$_{qw/ _cformat _sformat /} for @{$self->stack};
-
-      return !!$self->endpoint($r);
-    }
+    return !!$self->endpoint($r) if $endpoint && $empty;
     delete @$captures{qw(app cb)};
   }
 

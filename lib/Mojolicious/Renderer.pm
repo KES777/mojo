@@ -6,7 +6,7 @@ use Mojo::File 'path';
 use Mojo::JSON 'encode_json';
 use Mojo::Home;
 use Mojo::Loader 'data_section';
-use Mojo::Util qw(decamelize encode md5_sum monkey_patch deprecated);
+use Mojo::Util qw(decamelize encode md5_sum monkey_patch);
 
 has cache   => sub { Mojo::Cache->new };
 has classes => sub { ['main'] };
@@ -22,17 +22,13 @@ my $TEMPLATES = Mojo::Home->new->mojo_lib_dir->child('Mojolicious', 'resources',
 
 sub DESTROY { Mojo::Util::_teardown($_) for @{shift->{namespaces}} }
 
-
-# DEPRECATED
 sub accepts {
-  deprecated 'Mojolicious::Renderer::accept is DEPRECATED in favor of '
-    .'Mojolicious::Renderer::format';
-
   my ($self, $c) = (shift, shift);
 
   # List representations
   my $req  = $c->req;
-  my $fmt  = $req->param('format') || $c->stash->{format} || $c->match->{cn}[0];
+  my $capture =  $c->match->stack->[-1] || {};
+  my $fmt  = $req->param('format') || $capture->{format};
   my @exts = $fmt ? ($fmt) : ();
   push @exts, @{$c->app->types->detect($req->headers->accept)};
   return \@exts unless @_;
@@ -42,23 +38,34 @@ sub accepts {
   return @exts ? undef : shift;
 }
 
+
+sub _defaults {
+  my( $c ) =  @_;
+
+  my $format;
+  my $route =  $c->match->endpoint;
+  while( $route  &&  !($format =  $route->pattern->defaults->{format}) ) {
+    $route =  $route->parent;
+  }
+  return $format //=  $c->app->defaults->{format};
+}
+
+
 sub format {
   my( $self, $c, @cap ) =  @_;
 
   my $stash =  $c->stash;
   return $stash->{format}  if defined $stash->{format};
 
-  # Capabilities and requirements
-  my $cn  =  $c->match  &&  $c->match->{cn};
-  @cap =  ref $cn->[1] eq 'ARRAY' ? @{ $cn->[1] } : $cn->[1] // () unless @cap;
+  # Client requirements
+  my @req =  @{ $c->accepts };
 
-  my $req =  $c->req;
-  my $fmt =  $cn->[0] || $req->param('format');
-  my @req =  $fmt ? ($fmt) : ();
-  push @req, @{$c->app->types->detect($req->headers->accept)};
+  # Server capabilities
+  my $fmt =  _defaults( $c );
+  @cap =  ref $fmt eq 'ARRAY' ? @$fmt : $fmt // ()   unless @cap;
 
   # Find best representation
-  for my $ext (@req) { $ext eq $_ and return $ext for @cap }
+  for my $ext (@req) { $ext eq $_ and return $stash->{format}= $ext for @cap }
 
   return $stash->{format} =  @req ?
     (@cap ? ''      : $req[0] ):
@@ -362,6 +369,40 @@ C<format> C<GET>/C<POST> parameter, C<format> stash value, or C<Accept> request
 header, defaults to returning the first extension if no preference could be
 detected.
 
+=head2 format
+
+  my $format = $c->format('html', 'json', 'txt');
+
+  # Check if JSON is acceptable
+  $c->render(json => {hello => 'world'}) if $c->format('json');
+
+  # Check if JSON was specifically requested
+  $c->render(json => {hello => 'world'}) if $c->format('', 'json');
+
+  # Unsupported representation
+  $c->render(data => '', status => 204)
+    unless my $format = $c->format('html', 'json');
+
+Select best possible representation for L<Mojolicious::Controller> object from
+C<format> C<GET>/C<POST> parameter, C<format> stash value, C<Accept> request
+header, supported C<format> for route or application. If no preference could
+be detected it will return one of next results:
+
+If C<format> is requested and route or application defines supported C<format>
+then empty string is returned
+
+If C<format> is requested and route or application does not define
+suported C<format>s then fallback to first requested C<format>
+
+If C<format> is not requested and route or application defines supported
+C<format> then fallback to first supported C<format>
+
+If C<format> is not requested and route or application does not define
+suported C<format>s fallback to renderer's default C<format>
+
+By design content negotiation is done only once for current request. Negotiated
+C<format> is cached at C<format> stash value
+
 =head2 add_handler
 
   $renderer = $renderer->add_handler(epl => sub {...});
@@ -405,28 +446,6 @@ Get a helper by full name, generate a helper dynamically for a prefix, or return
 C<undef> if no helper or prefix could be found. Generated helpers return a
 proxy object containing the current controller object and on which nested
 helpers can be called.
-
-=head2 format
-
-  my $all  = $renderer->format(Mojolicious::Controller->new);
-  my $best = $renderer->format(Mojolicious::Controller->new, 'html', 'json');
-
-Select best possible representation for L<Mojolicious::Controller> object from
-C<format> stash value, C<format> C<GET>/C<POST> parameter, C<Accept> request
-header, supported C<format> for route or application. If no preference
-could be detected it will return one of next results:
-
-If C<format> is requested and route or application defines supported C<format>
-then empty string is returned
-
-If C<format> is requested and route or application does not define
-suported C<format>s then fallback to first requested C<format>
-
-If C<format> is not requested and route or application defines supported
-C<format> then fallback to first supported C<format>
-
-If C<format> is not requested and route or application does not define
-suported C<format>s fallback to renderer's default C<format>
 
 =head2 render
 

@@ -225,11 +225,10 @@ sub respond_to {
   # Detect format
   my $renderer = $self->app->renderer;
   my $format = $self->format( $renderer->default_format, keys %$args );
-  $self->stash->{format} = $format;
 
   # Find target
-  my $target;
-  unless ($target = $args->{$format}) {
+  my $target = $args->{$format};
+  unless( $target ) {
     return $self->rendered(204) unless $target = $args->{any};
   }
 
