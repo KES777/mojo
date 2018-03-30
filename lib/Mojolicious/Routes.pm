@@ -30,6 +30,9 @@ sub continue {
   @{$stash->{'mojo.captures'} //= {}}{keys %$field} = values %$field;
   @$stash{keys %$field} = values %$field;
 
+  # The format is negotiation process
+  delete $stash->{format};
+
   my $continue;
   my $last = !$stack->[++$position];
   if (my $cb = $field->{cb}) { $continue = $self->_callback($c, $cb, $last) }

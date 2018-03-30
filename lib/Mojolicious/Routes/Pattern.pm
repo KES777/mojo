@@ -26,6 +26,8 @@ sub match_partial {
   $$pathref = ${^POSTMATCH};
   @captures = () if $#+ == 0;
   my $captures = {%{$self->defaults}};
+  # default {format} will be checked while content negotiation. See accepts
+  delete $captures->{format};
   for my $placeholder (@{$self->placeholders}, 'format') {
     last unless @captures;
     my $capture = shift @captures;
@@ -77,6 +79,7 @@ sub render {
   }
 
   # Format can be optional
+  $format //=  $self->defaults->{ format }   if !exists $values->{format};
   return $endpoint && $format ? "$str.$format" : $str;
 }
 

@@ -189,7 +189,7 @@ ok !$pattern->match('/.xml', 1), 'no result';
 $pattern = Mojolicious::Routes::Pattern->new('/:test/v1.0');
 $pattern->defaults({action => 'index', format => 'html'});
 my $result = $pattern->match('/foo/v1.0', 1);
-is_deeply $result, {test => 'foo', action => 'index', format => 'html'},
+is_deeply $result, {test => 'foo', action => 'index'},
   'right structure';
 is $pattern->render($result), '/foo/v1.0', 'right result';
 is $pattern->render($result, 1), '/foo/v1.0.html', 'right result';
@@ -255,7 +255,7 @@ $pattern                        = Mojolicious::Routes::Pattern->new('/');
 $pattern->defaults->{format}    = 'txt';
 $pattern->constraints->{format} = ['txt'];
 $result                         = $pattern->match('/', 1);
-is_deeply $result, {format => 'txt'}, 'right structure';
+is_deeply $result, {}, 'right structure';
 
 # Unicode
 $pattern = Mojolicious::Routes::Pattern->new('/(one)♥(two)');

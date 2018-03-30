@@ -27,7 +27,8 @@ sub accepts {
 
   # List representations
   my $req  = $c->req;
-  my $fmt  = $req->param('format') || $c->stash->{format};
+  my $capture =  $c->match->stack->[-1] || {};
+  my $fmt  = $req->param('format') || $capture->{format};
   my @exts = $fmt ? ($fmt) : ();
   push @exts, @{$c->app->types->detect($req->headers->accept)};
   return \@exts unless @_;
@@ -35,6 +36,40 @@ sub accepts {
   # Find best representation
   for my $ext (@exts) { $ext eq $_ and return $ext for @_ }
   return @exts ? undef : shift;
+}
+
+
+sub _defaults {
+  my( $c ) =  @_;
+
+  my $format;
+  my $route =  $c->match->endpoint;
+  while( $route  &&  !($format =  $route->pattern->defaults->{format}) ) {
+    $route =  $route->parent;
+  }
+  return $format //=  $c->app->defaults->{format};
+}
+
+
+sub format {
+  my( $self, $c, @cap ) =  @_;
+
+  my $stash =  $c->stash;
+  return $stash->{format}  if defined $stash->{format};
+
+  # Client requirements
+  my @req =  @{ $c->accepts };
+
+  # Server capabilities
+  my $fmt =  _defaults( $c );
+  @cap =  ref $fmt eq 'ARRAY' ? @$fmt : $fmt // ()   unless @cap;
+
+  # Find best representation
+  for my $ext (@req) { $ext eq $_ and return $stash->{format}= $ext for @cap }
+
+  return $stash->{format} =  @req ?
+    (@cap ? ''      : $req[0] ):
+    (@cap ? $cap[0] : $self->default_format );
 }
 
 sub add_handler { $_[0]->handlers->{$_[1]} = $_[2] and return $_[0] }
@@ -93,7 +128,7 @@ sub render {
   };
   my $inline = $options->{inline} = delete $stash->{inline};
   $options->{handler} //= $self->default_handler if defined $inline;
-  $options->{format} = $stash->{format} || $self->default_format;
+  $options->{format} = $self->format( $c ) || $self->default_format;
 
   # Data
   return delete $stash->{data}, $options->{format} if defined $stash->{data};
@@ -115,7 +150,7 @@ sub render {
     if $stash->{extends} || $stash->{layout};
   while ((my $next = _next($stash)) && !defined $inline) {
     @$options{qw(handler template)} = ($stash->{handler}, $next);
-    $options->{format} = $stash->{format} || $self->default_format;
+    $options->{format} = $self->format( $c ) || $self->default_format;
     if ($self->_render_template($c, \my $tmp, $options)) { $output = $tmp }
     $content->{content} //= $output if $output =~ /\S/;
   }
@@ -333,6 +368,40 @@ Select best possible representation for L<Mojolicious::Controller> object from
 C<format> C<GET>/C<POST> parameter, C<format> stash value, or C<Accept> request
 header, defaults to returning the first extension if no preference could be
 detected.
+
+=head2 format
+
+  my $format = $c->format('html', 'json', 'txt');
+
+  # Check if JSON is acceptable
+  $c->render(json => {hello => 'world'}) if $c->format('json');
+
+  # Check if JSON was specifically requested
+  $c->render(json => {hello => 'world'}) if $c->format('', 'json');
+
+  # Unsupported representation
+  $c->render(data => '', status => 204)
+    unless my $format = $c->format('html', 'json');
+
+Select best possible representation for L<Mojolicious::Controller> object from
+C<format> C<GET>/C<POST> parameter, C<format> stash value, C<Accept> request
+header, supported C<format> for route or application. If no preference could
+be detected it will return one of next results:
+
+If C<format> is requested and route or application defines supported C<format>
+then empty string is returned
+
+If C<format> is requested and route or application does not define
+suported C<format>s then fallback to first requested C<format>
+
+If C<format> is not requested and route or application defines supported
+C<format> then fallback to first supported C<format>
+
+If C<format> is not requested and route or application does not define
+suported C<format>s fallback to renderer's default C<format>
+
+By design content negotiation is done only once for current request. Negotiated
+C<format> is cached at C<format> stash value
 
 =head2 add_handler
 
