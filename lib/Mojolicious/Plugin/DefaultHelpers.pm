@@ -108,7 +108,6 @@ sub _development {
     grep { !/^mojo\./ and defined $stash->{$_} } keys %$stash;
 
   # Render with fallbacks
-  my $mode     = $app->mode;
   my $renderer = $app->renderer;
   my $options  = {
     exception => $page eq 'exception' ? $e : undef,
@@ -116,24 +115,25 @@ sub _development {
     handler   => undef,
     snapshot  => \%snapshot,
     status    => $page eq 'exception' ? 500 : 404,
-    template  => "$page.$mode"
+    template  => $page
   };
+  my $mode     = $app->mode;
   my $bundled = 'mojo/' . ($mode eq 'development' ? 'debug' : $page);
-  return $c if _fallbacks($c, $options, $page, $bundled);
-  _fallbacks($c, {%$options, format => 'html'}, $page, $bundled);
+  return $c if _fallbacks($c, $options, $bundled);
+  _fallbacks($c, {%$options, format => 'html'}, $bundled);
   return $c;
 }
 
 sub _exception { blessed $_[0] && $_[0]->isa('Mojo::Exception') }
 
 sub _fallbacks {
-  my ($c, $options, $template, $bundled) = @_;
+  my ($c, $options, $bundled) = @_;
 
   # Mode specific template
-  return 1 if $c->render_maybe(%$options);
+  return 1 if $c->render_maybe(%$options, variant => 'development');
 
   # Normal template
-  return 1 if $c->render_maybe(%$options, template => $template);
+  return 1 if $c->render_maybe(%$options);
 
   # Inline template
   my $stash = $c->stash;
