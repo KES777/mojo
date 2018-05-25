@@ -212,7 +212,10 @@ sub _render_template {
   $c->app->log->error(qq{No handler for "$handler" available}) and return undef
     unless my $renderer = $self->handlers->{$handler};
 
+  # Do not use local. Value should be kept when exception occur
+  $c->stash->{ 'mojo.rendering' } =  1;
   $renderer->($self, $c, $output, $options);
+  delete $c->stash->{ 'mojo.rendering' };
   return 1 if defined $$output;
 }
 
