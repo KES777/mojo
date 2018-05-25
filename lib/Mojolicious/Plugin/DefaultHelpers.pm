@@ -118,6 +118,9 @@ sub _development {
   $options->{handler} = undef if $stash->{ 'mojo.rendering' };
   my $bundled = 'mojo/' . ($mode eq 'development' ? 'debug' : $page);
   return $c if _fallbacks($c, $options, $page, $bundled);
+  if( !$stash->{ 'mojo.rendering' } ) {
+    return $c if _fallbacks($c, {%$options, handler => undef}, $page, $bundled)
+  }
   _fallbacks($c, {%$options, format => 'html'}, $page, $bundled);
   return $c;
 }
