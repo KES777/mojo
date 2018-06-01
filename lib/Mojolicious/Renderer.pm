@@ -73,20 +73,24 @@ sub get_helper {
 sub render {
   my ($self, $c, $args) = @_;
 
-  # Localize "extends" and "layout" to allow argument overrides
+  my $copy;
+  my $output;
+  my $options;
   my $stash = $c->stash;
+  my ($maybe, $string) = delete @{$args}{'mojo.maybe', 'mojo.string'};
+  {
+  # Localize "extends" and "layout" to allow argument overrides
   local $stash->{layout}  = $stash->{layout}  if exists $stash->{layout};
   local $stash->{extends} = $stash->{extends} if exists $stash->{extends};
 
   # Rendering to string
-  my ($maybe, $string) = delete @{$args}{'mojo.maybe', 'mojo.string'};
   local @{$stash}{keys %$args} if $string || $maybe;
   delete @{$stash}{qw(layout extends)} if $string;
 
   # All other arguments just become part of the stash
   @$stash{keys %$args} = values %$args;
 
-  my $options = {
+  $options = {
     encoding => $self->encoding,
     handler  => $stash->{handler},
     template => delete $stash->{template},
@@ -108,7 +112,7 @@ sub render {
 
   # Template or templateless handler
   $options->{template} //= $self->template_for($c);
-  return () unless $self->_render_template($c, \my $output, $options);
+  return () unless $self->_render_template($c, \$output, $options);
 
   # Inheritance
   my $content = $stash->{'mojo.content'} ||= {};
@@ -121,6 +125,9 @@ sub render {
     $content->{content} //= $output if $output =~ /\S/;
   }
 
+  @$copy{ keys %$args } =  @$stash{ keys %$args }  if $maybe;
+  }
+  @$stash{ keys %$args } =  @$copy{ keys %$args }   if $maybe;
   return $string ? $output : _maybe($options->{encoding}, $output),
     $options->{format};
 }

@@ -178,7 +178,7 @@ sub render {
   my $headers = $self->res->body($output)->headers;
   $headers->content_type($app->types->type($format) || 'text/plain')
     unless $headers->content_type;
-  return !!$self->rendered($args->{status} || $self->stash->{status});
+  return !!$self->rendered($self->stash->{status});
 }
 
 sub render_later { shift->stash('mojo.rendered' => 1) }
