@@ -34,6 +34,9 @@ chdir $cwd;
 # Generating files
 is $command->rel_file('foo/bar.txt')->basename, 'bar.txt', 'right result';
 my $template = "@@ foo_bar\njust <%= 'works' %>!\n";
+$template .= "@@ pass_by_value\nvariable value <%= \$_[0] %>\n";
+$template .= "@@ pass_many\nmany values: <%= \@_ %>\n";
+$template .= "@@ pass_by_name\nvariable value <%= \$foo %>\n";
 open my $data, '<', \$template;
 no strict 'refs';
 *{"Mojolicious::Command::DATA"} = $data;
@@ -72,6 +75,16 @@ like $buffer, qr/\[exist\]/, 'right output';
 open my $xml, '<', $command->rel_file('123.xml');
 is join('', <$xml>), "seems\nto\nwork", 'right result';
 chdir $cwd;
+
+# Pass variables into template
+$buffer =  $command->render_data( 'pass_by_value', 'yada' );
+is $buffer, "variable value yada\n", 'pass variable by value';
+
+$buffer =  $command->render_data( 'pass_by_value', 'foo', 'bar' );
+is $buffer, "many values: foo bar\n", 'pass many variables by value';
+
+$buffer =  $command->render_data( 'pass_by_name', { foo => 'bar' } );
+is $buffer, "variable value bar\n", 'pass variable by name';
 
 # Quiet
 chdir $dir;
