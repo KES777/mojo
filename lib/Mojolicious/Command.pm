@@ -200,6 +200,7 @@ Return a L<Mojo::File> object relative to the current working directory.
 
   my $data = $command->render_data('foo_bar');
   my $data = $command->render_data('foo_bar', @args);
+  my $data = $command->render_data('foo_bar', {foo => 'bar'});
 
 Render a template from the C<DATA> section of the command class with
 L<Mojo::Loader> and L<Mojo::Template>.
@@ -208,6 +209,7 @@ L<Mojo::Loader> and L<Mojo::Template>.
 
   $command = $command->render_to_file('foo_bar', '/home/sri/foo.txt');
   $command = $command->render_to_file('foo_bar', '/home/sri/foo.txt', @args);
+  $command = $command->render_to_file('foo_bar', '/home/sri/foo.txt', {foo => 'bar'});
 
 Render a template from the C<DATA> section of the command class with
 L<Mojo::Template> to a file and create directory if necessary.
@@ -216,6 +218,7 @@ L<Mojo::Template> to a file and create directory if necessary.
 
   $command = $command->render_to_rel_file('foo_bar', 'foo/bar.txt');
   $command = $command->render_to_rel_file('foo_bar', 'foo/bar.txt', @args);
+  $command = $command->render_to_rel_file('foo_bar', 'foo/bar.txt', {foo => 'bar'});
 
 Portably render a template from the C<DATA> section of the command class with
 L<Mojo::Template> to a file relative to the current working directory and
