@@ -84,15 +84,17 @@ sub render {
   $options->{handler} //= $self->default_handler if defined $inline;
   $options->{format} = $stash->{format} || $self->default_format;
 
-  # Data
-  return delete $stash->{data}, $options->{format} if defined $stash->{data};
+  if( !$options->{handler} || $options->{handler} eq 'ep' ) {
+    # Data
+    return delete $stash->{data}, $options->{format} if defined $stash->{data};
 
-  # Text
-  return _maybe($options->{encoding}, delete $stash->{text}), $options->{format}
-    if defined $stash->{text};
+    # Text
+    return _maybe($options->{encoding}, delete $stash->{text}), $options->{format}
+      if defined $stash->{text};
 
-  # JSON
-  return encode_json(delete $stash->{json}), 'json' if exists $stash->{json};
+    # JSON
+    return encode_json(delete $stash->{json}), 'json' if exists $stash->{json};
+  }
 
   # Template or templateless handler
   $options->{template} //= $self->template_for($c);
