@@ -457,7 +457,8 @@ See L<Mojolicious::Guides::Testing> for more.
 
 =head1 ATTRIBUTES
 
-L<Test::Mojo> implements the following attributes.
+L<Test::Mojo> inherits all attributes from L<Mojo::Base> and
+implements the following new ones.
 
 =head2 message
 
