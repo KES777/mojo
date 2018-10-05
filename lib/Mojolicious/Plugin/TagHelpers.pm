@@ -116,9 +116,15 @@ sub _link_to {
 
   # Captures
   push @url, shift if ref $_[0] eq 'HASH';
-  my $query, shift if ref $_[0] eq 'ARRAY';
 
-  return _tag('a', href => $c->url_for(@url)->query( $query // [] ), @_);
+  # Query
+  my $url = $c->url_for(@url);
+  if( ref $_[0] ) {
+    my $query =  shift;
+    ref $query eq 'SCALAR'? $url->query( @$$query ) : $url->query( $query );
+  }
+
+  return _tag('a', href => $url, @_);
 }
 
 sub _option {
