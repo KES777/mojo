@@ -93,7 +93,7 @@ sub _development {
 
   # Filtered stash snapshot
   my $stash = $c->stash;
-  %{$stash->{snapshot} = {}} = map { $_ => $stash->{$_} }
+  $stash->{snapshot} = { map { $_ => $stash->{$_} } };
     grep { !/^mojo\./ and defined $stash->{$_} } keys %$stash;
   $stash->{exception} = $page eq 'exception' ? $e : undef;
 
