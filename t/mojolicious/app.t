@@ -177,6 +177,12 @@ is $t->app->plugins->emit_chain(custom_chain => 4), 8, 'hook has been emitted';
 # MojoliciousTest::Command::test_command (with abbreviation)
 is $t->app->start(qw(test_command --to)), 'works too!', 'right result';
 
+# Render application template in loop from command
+is $t->app->start(qw(render_template)), "invoice\ninvoice\n",
+  'rendered twice';
+is $t->app->start(qw(render_template --stash)), "invoice\ninvoice\n",
+  'rendered twice';
+
 # Plugin::Test::SomePlugin2::register (security violation)
 $t->get_ok('/plugin-test-some_plugin2/register')->status_isnt(500)
   ->status_is(404)->header_is(Server => 'Mojolicious (Perl)')
