@@ -150,7 +150,7 @@ $pattern = Mojolicious::Routes::Pattern->new('/test');
 $pattern->defaults({action => 'index'});
 ok !$pattern->regex, 'no regex';
 is_deeply $pattern->match('/test.xml', 1),
-  {action => 'index', format => 'xml'}, 'right structure';
+  {action => 'index', format => 'xml', _cformat => 'xml'}, 'right structure';
 ok $pattern->regex, 'regex has been compiled on demand';
 $pattern = Mojolicious::Routes::Pattern->new('/test.json');
 $pattern->defaults({action => 'index'});
@@ -189,15 +189,16 @@ ok !$pattern->match('/.xml', 1), 'no result';
 $pattern = Mojolicious::Routes::Pattern->new('/:test/v1.0');
 $pattern->defaults({action => 'index', format => 'html'});
 my $result = $pattern->match('/foo/v1.0', 1);
-is_deeply $result, {test => 'foo', action => 'index', format => 'html'},
+is_deeply $result, {test => 'foo', action => 'index', format => 'html', _sformat => 'html'},
   'right structure';
 is $pattern->render($result), '/foo/v1.0', 'right result';
 is $pattern->render($result, 1), '/foo/v1.0.html', 'right result';
 is $pattern->render({%$result, format => undef}, 1), '/foo/v1.0',
   'right result';
 $result = $pattern->match('/foo/v1.0.txt', 1);
-is_deeply $result, {test => 'foo', action => 'index', format => 'txt'},
-  'right structure';
+my $capture = {test => 'foo', action => 'index', format => 'txt',
+  _sformat => 'html', _cformat => 'txt'};
+is_deeply $result, $capture, 'right structure';
 is $pattern->render($result), '/foo/v1.0', 'right result';
 is $pattern->render($result, 1), '/foo/v1.0.txt', 'right result';
 ok !$pattern->match('/foo/v2.0', 1), 'no result';
@@ -255,7 +256,7 @@ $pattern                        = Mojolicious::Routes::Pattern->new('/');
 $pattern->defaults->{format}    = 'txt';
 $pattern->constraints->{format} = ['txt'];
 $result                         = $pattern->match('/', 1);
-is_deeply $result, {format => 'txt'}, 'right structure';
+is_deeply $result, {format => 'txt', _sformat => 'txt'}, 'right structure';
 
 # Unicode
 $pattern = Mojolicious::Routes::Pattern->new('/<one>♥<two>');

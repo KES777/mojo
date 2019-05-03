@@ -97,6 +97,8 @@ sub _development {
     grep { !/^mojo\./ and defined $stash->{$_} } keys %$stash;
   $stash->{exception} = $page eq 'exception' ? $e : undef;
 
+  $app->plugins->emit_chain(around_action => $c, sub{}, 1);
+
   # Render with fallbacks
   my $mode    = $app->mode;
   my $options = {
