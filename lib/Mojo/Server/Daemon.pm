@@ -171,7 +171,7 @@ sub _listen {
   my $query   = $url->query;
   my $options = {backlog => $self->backlog};
   $options->{$_} = $query->param($_) for qw(fd single_accept reuse);
-  if ($proto eq 'http+unix') { $options->{path} = $url->host }
+  if ($proto eq 'http+unix') { $options->{path} = $url->path }
   else {
     if ((my $host = $url->host) ne '*') { $options->{address} = $host }
     if (my $port = $url->port) { $options->{port} = $port }
