@@ -78,10 +78,10 @@ sub _match {
   }
 
   # Match children
-  my $snapshot = $r->parent ? [@{$self->stack}] : [];
+  my $offset = $r->parent ? @{$self->stack} : 0;
   for my $child (@{$r->children}) {
     return 1 if $self->_match($child, $c, $options);
-    $self->stack([@$snapshot]);
+    splice @{$self->stack}, $offset;
   }
 }
 
