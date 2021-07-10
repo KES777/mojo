@@ -81,7 +81,7 @@ sub render {
   my $options = {
     encoding => $self->encoding,
     handler  => $stash->{handler},
-    template => delete $stash->{template},
+    template => $stash->{template},
     variant  => $stash->{variant}
   };
   my $inline = $options->{inline} = delete $stash->{inline};
